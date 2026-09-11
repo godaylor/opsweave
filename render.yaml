@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: opsweave
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: PUBLIC_ORIGIN
+        fromService:
+          type: web
+          name: opsweave
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DATABASE_PATH
+        value: /data/opsweave.sqlite
+    disk:
+      name: opsweave-data
+      mountPath: /data
+      sizeGB: 1
