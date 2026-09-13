@@ -56,7 +56,7 @@ export function validatePlaybook(input) {
 		steps,
 	};
 }
-export function accept(store, owner, input, key, parentId = null) {
+export async function accept(store, owner, input, key, parentId = null) {
 	const title = text(input.title);
 	const service = text(input.service, 100);
 	if (!["critical", "high", "medium", "low"].includes(input.severity))
@@ -73,25 +73,28 @@ export function accept(store, owner, input, key, parentId = null) {
 			]),
 		)
 		.digest("hex");
-	return store.transaction(() => {
-		const prior = store.db
+	return await store.transaction(async () => {
+		const prior = await store.db
 			.prepare("SELECT digest,run_id FROM acceptance WHERE owner=? AND key=?")
 			.get(owner, key);
 		if (prior) {
 			if (prior.digest !== digest)
 				throw new Problem(409, "idempotency_conflict");
-			return { run: store.get(owner, "run", prior.run_id), duplicate: true };
+			return {
+				run: await store.get(owner, "run", prior.run_id),
+				duplicate: true,
+			};
 		}
-		const playbook = store.get(owner, "playbook", input.playbookId);
+		const playbook = await store.get(owner, "playbook", input.playbookId);
 		if (!playbook?.published)
 			throw new Problem(404, "published_playbook_required");
 		if (
-			store
-				.list(owner, "run")
-				.filter((r) => ["running", "waiting"].includes(r.status)).length >= 30
+			(await store.list(owner, "run")).filter((r) =>
+				["running", "waiting"].includes(r.status),
+			).length >= 30
 		)
 			throw new Problem(429, "active_run_limit");
-		if (store.list(owner, "run").length >= 1000)
+		if ((await store.list(owner, "run")).length >= 1000)
 			throw new Problem(429, "workspace_limit");
 		const run = {
 			id: randomUUID(),
@@ -109,49 +112,47 @@ export function accept(store, owner, input, key, parentId = null) {
 			parentId,
 			steps: playbook.published.steps.map((s) => ({ ...s, status: "pending" })),
 		};
-		store.put(owner, "run", run);
-		store.db
+		await store.put(owner, "run", run);
+		await store.db
 			.prepare("INSERT INTO acceptance VALUES(?,?,?,?)")
 			.run(owner, key, digest, run.id);
-		store.event(owner, run, "incident.created", title);
-		if (parentId) store.event(owner, run, "run.replayed", parentId);
+		await store.event(owner, run, "incident.created", title);
+		if (parentId) await store.event(owner, run, "run.replayed", parentId);
 		return { run, duplicate: false };
 	});
 }
-export function tick(store) {
-	store.transaction(() => {
-		const rows = store.db
-			.prepare(`SELECT owner,body FROM records WHERE kind='run' AND (
-      json_extract(body,'$.status')='running' OR (
-        json_extract(body,'$.status')='waiting' AND
-        json_extract(body,'$.steps[' || json_extract(body,'$.cursor') || '].type')='wait' AND
-        json_extract(body,'$.steps[' || json_extract(body,'$.cursor') || '].due')<=?
-      )) ORDER BY json_extract(body,'$.updated') LIMIT 100`)
-			.all(Date.now());
+export async function tick(store) {
+	return await store.transaction(async () => {
+		const rows = await store.readyRuns();
 		for (const row of rows) {
-			const run = JSON.parse(row.body);
+			const run = row.body;
 			const step = run.steps[run.cursor];
 			if (!step) {
 				run.status = "completed";
 				run.completed = Date.now();
-				store.event(row.owner, run, "run.completed");
+				await store.event(row.owner, run, "run.completed");
 			} else if (step.status === "waiting" && step.type !== "wait") continue;
 			else if (step.status === "waiting" && step.due > Date.now()) continue;
 			else if (step.condition !== "always" && step.condition !== run.severity) {
 				step.status = "condition_skipped";
 				run.cursor++;
-				store.event(row.owner, run, "step.skipped", step.title);
+				await store.event(row.owner, run, "step.skipped", step.title);
 			} else if (["task", "approval"].includes(step.type)) {
 				step.status = "waiting";
 				step.started = Date.now();
 				run.status = "waiting";
-				store.event(row.owner, run, `step.${step.type}_requested`, step.title);
+				await store.event(
+					row.owner,
+					run,
+					`step.${step.type}_requested`,
+					step.title,
+				);
 			} else if (step.type === "wait" && step.status === "pending") {
 				step.status = "waiting";
 				step.started = Date.now();
 				step.due = Date.now() + step.seconds * 1000;
 				run.status = "waiting";
-				store.event(row.owner, run, "step.timer_started", step.title);
+				await store.event(row.owner, run, "step.timer_started", step.title);
 			} else {
 				step.status = "completed";
 				step.completed = Date.now();
@@ -161,7 +162,7 @@ export function tick(store) {
 					run.incidentStatus = "resolved";
 					run.resolved = Date.now();
 				}
-				store.event(
+				await store.event(
 					row.owner,
 					run,
 					step.type === "note"
@@ -173,13 +174,14 @@ export function tick(store) {
 				);
 			}
 			run.updated = Date.now();
-			store.put(row.owner, "run", run);
+			await store.put(row.owner, "run", run);
 		}
+		return rows.length;
 	});
 }
-export function act(store, owner, id, input) {
-	return store.transaction(() => {
-		const run = store.get(owner, "run", id);
+export async function act(store, owner, id, input) {
+	return await store.transaction(async () => {
+		const run = await store.get(owner, "run", id);
 		if (!run) throw new Problem(404, "not_found");
 		const step = run.steps[run.cursor];
 		if (input.action === "acknowledge") {
@@ -219,13 +221,13 @@ export function act(store, owner, id, input) {
 				run.status = "running";
 			}
 		} else throw new Problem(400, "invalid_action");
-		store.event(
+		await store.event(
 			owner,
 			run,
 			`action.${input.action}`,
 			input.reason ? text(input.reason, 500) : "",
 		);
 		run.updated = Date.now();
-		return store.put(owner, "run", run);
+		return await store.put(owner, "run", run);
 	});
 }

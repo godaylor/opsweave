@@ -38,7 +38,7 @@
 flowchart LR
   UI[React + TypeScript] --> API[Node HTTP API]
   Monitoring[Monitoring webhook] --> API
-  API --> DB[(SQLite WAL)]
+  API --> DB[(PostgreSQL stores accounts, hashed sessions, versioned playbooks, runs, idempotency records and history in a private `opsweave` schema.
   Executor[In-process execution loop] --> DB
   UI -->|refetch every 2s| API
 ```
@@ -47,13 +47,13 @@ flowchart LR
 |---|---|
 | UI | React 19, TypeScript, React Hook Form, TanStack Query, original CSS |
 | Build | Vite 6, lazy editor chunk |
-| Server | Node.js 22, built-in HTTP, crypto/scrypt, SQLite |
-| Persistence | SQLite WAL, transactions, scoped records, immutable run snapshots |
+| Server | Node.js 22, built-in HTTP, crypto/scrypt, pg 8.23.0 |
+| Persistence | PostgreSQL: accounts, hashed sessions, playbooks, runs, idempotency and history in private `opsweave` schema |
 | Execution | Ordered server loop, durable cursor and timer deadline, transactional events |
 | Verification | Mocha, Playwright/Chromium, TypeScript, Biome |
 | Distribution | One Node process; optional Docker image and Render blueprint |
 
-No server npm runtime dependencies. React libraries are bundled into static assets. No Redis, MongoDB, ClickHouse, provider framework or upstream runtime is needed.
+Server runtime dependency: pinned pg 8.23.0 and its recorded dependency closure. React libraries are bundled into static assets. No Redis, MongoDB, ClickHouse, provider framework or upstream runtime is needed.
 
 ## Local development
 
@@ -62,19 +62,23 @@ Use Node **22.23.0** for the reproducible release target (22.15+ supports the AP
 ```sh
 npm ci --ignore-scripts
 npm run build
+# Supply a private DATABASE_URL for a dedicated Postgres database.
 npm start
 ```
 
-Open `http://127.0.0.1:32320`. SQLite is created at `data/opsweave.sqlite`. No seed or Docker is required. If the port is busy, choose another free **32300–32399** port and set both `PORT` and `PUBLIC_ORIGIN`; never stop another project's process.
+Open `http://127.0.0.1:32320`. `DATABASE_URL` is required; local files are never used as fallback. Use a dedicated local Postgres database or a free managed instance. If the port is busy, choose another free **32300–32399** port and set both `PORT` and `PUBLIC_ORIGIN`; never stop another project's process.
 
-The Node 22 SQLite API prints an experimental warning. This warning is not hidden.
+SQLite is used only by the optional read-only import/backup tools. Existing SQLite data and volumes are preserved.
 
 | Variable | Default / purpose |
 |---|---|
 | `PORT` | `32320` |
 | `HOST` | `127.0.0.1`; use `0.0.0.0` behind a production HTTPS proxy |
 | `PUBLIC_ORIGIN` | `http://127.0.0.1:32320`; exact public origin, required HTTPS in production |
-| `DATABASE_PATH` | `data/opsweave.sqlite`; place on a persistent disk |
+| `DATABASE_URL` | Required private Postgres URL; never sent to the browser |
+| `DATABASE_SCHEMA` | `opsweave`; private app schema, separate from public |
+| `DATABASE_CA_FILE` | Optional provider CA file; remote TLS certificate validation is always enabled |
+| `TEST_DATABASE_URL` | Isolated local database named `opsweave_test` |
 | `PUBLIC_DIR` | `dist/opsweave-public` |
 | `NODE_ENV` | Set `production` for the HTTPS configuration guard |
 | `OPSWEAVE_TEST_PORT` | `32330`; isolated browser test server, existing servers are refused |
@@ -92,27 +96,33 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Tests create separate SQLite files and choose only OpsWeave test ports. They do not connect to a seeded database. Browser tests drive actual API execution, including human decisions and a timer. Screenshots are generated in `screenshots/`.
+Tests require `TEST_DATABASE_URL` pointing to a local disposable database named `opsweave_test`; each case uses a unique schema. They refuse remote/seeded databases and choose only OpsWeave test ports. Browser tests drive actual API execution, including human decisions and a timer. Screenshots are generated in `screenshots/`.
 
 The build generates exact third-party license texts and an SPDX browser dependency inventory. Docker base-image licensing and vulnerability scanning are separate checks, not implied by the browser inventory.
 
 ## Deployment
 
-The smallest supported deployment is **one long-running Node service with a persistent local disk and HTTPS**. Do not deploy this SQLite application to an ephemeral filesystem or several independent replicas.
+Deploy **one Render Free web service, without any persistent disk**, plus a dedicated **Neon Free Postgres** database. Supabase Free also works with a session-pooler URL, but the current account has exhausted its free-project limit; do not pause or alter other projects to free capacity. Never select a paid tier.
 
-The included `render.yaml` provisions a Docker web service plus a 1 GB disk. It uses a **paid plan** because persistent disks are not available on Render's free web services. No hosting subscription is created by the repository itself.
+[Open the Render blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/godaylor/opsweave). Select the implementation branch while PR #1 is open. The blueprint sets `plan: free`, derives the HTTPS origin, and prompts for `DATABASE_URL` as a server secret. Frontend and backend share one origin. No disk or billing upgrade is required by this configuration. Do not paste the database URL into Git, screenshots, a public build variable or documentation.
 
-[Open the Render blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/godaylor/opsweave). The blueprint derives `PUBLIC_ORIGIN` from Render's assigned `RENDER_EXTERNAL_URL`; no secret or manual URL is required. Connect billing/provisioning in your own account. After deployment, verify `/api/health`, then perform the full create → publish → run → approve → resolve flow at the **public URL**. A local test is not a public release check. Set `PUBLIC_ORIGIN` explicitly if you later add a custom domain.
+Remote connections require verified TLS. Use the pooler endpoint supplied by Neon or Supabase rather than guessing its host. All queries use transaction-scoped schema selection, compatible with transaction pooling. The private schema has RLS enabled and no public grants; browser clients never receive database credentials. The server's database role owns the app tables; user isolation is enforced by the API's owner predicates, not Supabase Auth policies.
 
-For another server: build the included Dockerfile, mount a private writable volume at `/data`, and provide `PUBLIC_ORIGIN`. The process runs as the unprivileged `node` user. Only expose HTTP through an HTTPS reverse proxy; SQLite is not a network service.
+Free hosting sleeps and has usage limits. Render can suspend the process after inactivity and Neon can suspend compute; a first request may be slow. Timer deadlines and accepted work survive in Postgres and resume after wake/restart. This is not an always-on scheduler or an SLA for exact-time incident paging. Never add artificial keepalive traffic to bypass free limits. If a free quota is exhausted, stop provisioning rather than upgrade.
 
-### Backup and restore
+After provisioning, verify `/api/health` reports `persistence: postgres` and run the full scenario at the public URL. Local and CI passes are not public verification. `OPSWEAVE_E2E_URL=https://your-host npm run test:e2e` runs the same real browser flows against a deployed app and creates only new isolated guest workspaces.
+
+### Existing SQLite data and rollback
+
+The source SQLite volume is never deleted or changed. Obtain a consistent private backup using the historical `backup.mjs` tool, then run:
 
 ```sh
-DATABASE_PATH=/data/opsweave.sqlite node apps/api/standalone/backup.mjs /private-backups/opsweave-new.sqlite
+DATABASE_URL='<private-target>' node apps/api/standalone/import-sqlite.mjs /private/source.sqlite
 ```
 
-This uses SQLite's consistent backup API and refuses to overwrite a file. Protect backups like credentials: they contain account and incident data. Restore to a **new** private data path and run a separate isolated service to verify the history before switching traffic. Never copy only a live WAL database file or overwrite the working production database. Keep the previous image/data available during a rollout; schema migration automation is not included.
+The import opens the source read-only, checks all six target tables are empty, copies them in one transaction, preserves record/event order, and rolls back on failure. Repeating it against a populated target is refused. Credentials and session hashes are copied only if an existing workspace migration is explicitly requested; public deployment can start with an empty database. Do not overwrite production data to retry an import.
+
+Use provider Postgres backup/export facilities and verify a restore into a separate database. Retain the previous SQLite image/volume for rollback, but do not switch back after new Postgres writes without reconciling those writes. There is no automatic two-way replication.
 
 ## Provenance and contribution
 
@@ -122,6 +132,6 @@ The project contribution is the product contract, incident/step state machine, t
 
 ## English
 
-OpsWeave is a personal incident-response workspace. Build and publish a sequential playbook, start an incident, complete responder tasks and approve decisions, then review durable execution results. A compact Node/SQLite backend keeps the main workflow functional without an enterprise notification stack. This edition is a single-user workspace product, not an on-call paging service or a multi-team incident-management platform.
+OpsWeave is a personal incident-response workspace. Build and publish a sequential playbook, start an incident, complete responder tasks and approve decisions, then review durable execution results. A compact Node/Postgres backend keeps the main workflow functional without an enterprise notification stack. This edition is a single-user workspace product, not an on-call paging service or a multi-team incident-management platform.
 
 See [PORTFOLIO_HANDOFF.md](PORTFOLIO_HANDOFF.md) for the precise release status and portfolio material.

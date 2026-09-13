@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=22.15.0 <23" },
+  "engines": {
+    "node": ">=22.15.0 <23"
+  },
   "scripts": {
     "start": "node apps/api/standalone/server.mjs",
     "build": "vite build --config apps/dashboard/standalone/vite.config.mjs",
@@ -13,6 +15,20 @@
     "test": "mocha apps/api/standalone/runtime.spec.mjs --timeout 15000",
     "test:e2e": "playwright test --config playwright.config.mjs"
   },
-  "dependencies": { "react": "19.2.3", "react-dom": "19.2.3", "@tanstack/react-query": "5.101.2", "react-hook-form": "7.71.1" },
-  "devDependencies": { "vite": "6.4.3", "typescript": "5.6.2", "@types/react": "19.2.8", "@types/react-dom": "19.2.3", "@biomejs/biome": "2.2.0", "mocha": "10.2.0", "@playwright/test": "1.58.2" }
+  "dependencies": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "@tanstack/react-query": "5.101.2",
+    "react-hook-form": "7.71.1",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "vite": "6.4.3",
+    "typescript": "5.6.2",
+    "@types/react": "19.2.8",
+    "@types/react-dom": "19.2.3",
+    "@biomejs/biome": "2.2.0",
+    "mocha": "10.2.0",
+    "@playwright/test": "1.58.2"
+  }
 }

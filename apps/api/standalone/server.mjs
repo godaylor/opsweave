@@ -49,32 +49,44 @@ async function body(req) {
 		throw new Problem(400, "invalid_json");
 	}
 }
-export function createApp({
-	database = ":memory:",
+export async function createApp({
+	database = process.env.DATABASE_URL,
+	schema = process.env.DATABASE_SCHEMA || "opsweave",
 	publicDir,
 	origin = "http://127.0.0.1:32320",
 	secure = false,
 	startWorker = true,
 } = {}) {
-	const store = new Store(database);
+	const store = new Store(database, schema);
+	await store.initialize();
 	const limits = new Map();
 	let workerHealthy = true;
+	let ticking = false;
+	let nextTick = 0;
 	const timer = startWorker
-		? setInterval(() => {
+		? setInterval(async () => {
+				if (ticking || Date.now() < nextTick) return;
+				ticking = true;
 				try {
-					tick(store);
+					const processed = await tick(store);
+					nextTick = Date.now() + (processed ? 0 : 30000);
 					workerHealthy = true;
 				} catch {
+					nextTick = Date.now() + 5000;
 					workerHealthy = false;
 					console.error("execution_tick_failed");
+				} finally {
+					ticking = false;
 				}
 			}, 300)
 		: null;
 	timer?.unref();
-	function session(res, user) {
-		store.db.prepare("DELETE FROM sessions WHERE expires<=?").run(Date.now());
+	async function session(res, user) {
+		await store.db
+			.prepare("DELETE FROM sessions WHERE expires<=?")
+			.run(Date.now());
 		const token = randomBytes(32).toString("base64url");
-		store.db
+		await store.db
 			.prepare("INSERT INTO sessions VALUES(?,?,?)")
 			.run(hash(token), user, Date.now() + 7 * day);
 		res.setHeader(
@@ -82,12 +94,12 @@ export function createApp({
 			`opsweave_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=604800${secure ? "; Secure" : ""}`,
 		);
 	}
-	function identity(req) {
+	async function identity(req) {
 		const token = /(?:^|;\s*)opsweave_session=([^;]+)/.exec(
 			req.headers.cookie || "",
 		)?.[1];
 		if (!token) throw new Problem(401, "sign_in_required");
-		const row = store.db
+		const row = await store.db
 			.prepare(
 				"SELECT u.id,u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires>? AND u.disabled=0",
 			)
@@ -115,11 +127,12 @@ export function createApp({
 		try {
 			const url = new URL(req.url, origin);
 			const path = url.pathname;
+			if (path.startsWith('/api/') && path !== '/api/health') nextTick = 0;
 			if (path === "/api/health" && req.method === "GET") {
-				store.db.prepare("SELECT 1").get();
+				await store.db.prepare("SELECT 1").get();
 				return send(workerHealthy ? 200 : 503, {
 					status: workerHealthy ? "ready" : "degraded",
-					persistence: "sqlite",
+					persistence: "postgres",
 					execution: workerHealthy ? "ready" : "degraded",
 				});
 			}
@@ -185,12 +198,12 @@ export function createApp({
 			if (path === "/api/auth/guest" && req.method === "POST") {
 				await body(req);
 				const id = randomUUID();
-				store.db
+				await store.db
 					.prepare(
 						"INSERT INTO users(id,email,password,created) VALUES(?,?,?,?)",
 					)
 					.run(id, null, null, Date.now());
-				session(res, id);
+				await session(res, id);
 				return send(201, { id, email: null });
 			}
 			if (
@@ -201,7 +214,7 @@ export function createApp({
 				const email = text(input.email, 254).toLowerCase();
 				if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
 					throw new Problem(400, "invalid_email");
-				const existing = store.db
+				const existing = await store.db
 					.prepare("SELECT * FROM users WHERE email=?")
 					.get(email);
 				if (path.endsWith("/login")) {
@@ -212,47 +225,51 @@ export function createApp({
 					);
 					if (!existing || existing.disabled || !valid)
 						throw new Problem(401, "invalid_credentials");
-					session(res, existing.id);
+					await session(res, existing.id);
 					return send(200, { id: existing.id, email });
 				}
 				if (existing) throw new Problem(409, "account_unavailable");
 				const encoded = await password(input.password);
 				let guest;
 				try {
-					guest = identity(req);
+					guest = await identity(req);
 				} catch {}
 				const id = guest && !guest.email ? guest.id : randomUUID();
-				store.transaction(() => {
-					if (store.db.prepare("SELECT id FROM users WHERE email=?").get(email))
+				await store.transaction(async () => {
+					if (
+						await store.db
+							.prepare("SELECT id FROM users WHERE email=?")
+							.get(email)
+					)
 						throw new Problem(409, "account_unavailable");
 					if (guest && !guest.email) {
-						const result = store.db
+						const result = await store.db
 							.prepare(
 								"UPDATE users SET email=?,password=? WHERE id=? AND email IS NULL AND disabled=0",
 							)
 							.run(email, encoded, id);
 						if (!result.changes) throw new Problem(409, "account_unavailable");
 					} else
-						store.db
+						await store.db
 							.prepare(
 								"INSERT INTO users(id,email,password,created) VALUES(?,?,?,?)",
 							)
 							.run(id, email, encoded, Date.now());
 				});
-				session(res, id);
+				await session(res, id);
 				return send(201, { id, email });
 			}
 			if (path === "/api/ingest" && req.method === "POST") {
 				const key = req.headers.authorization?.replace(/^Bearer /, "");
 				const credential =
 					key &&
-					store.db
+					(await store.db
 						.prepare(
 							"SELECT k.owner FROM api_keys k JOIN users u ON u.id=k.owner WHERE k.hash=? AND k.expires>? AND u.disabled=0",
 						)
-						.get(hash(key), Date.now());
+						.get(hash(key), Date.now()));
 				if (!credential) throw new Problem(401, "invalid_api_key");
-				const result = accept(
+				const result = await accept(
 					store,
 					credential.owner,
 					await body(req),
@@ -260,7 +277,7 @@ export function createApp({
 				);
 				return send(result.duplicate ? 200 : 202, result);
 			}
-			const user = identity(req);
+			const user = await identity(req);
 			const owner = user.id;
 			if (path === "/api/auth/me" && req.method === "GET")
 				return send(200, user);
@@ -268,7 +285,9 @@ export function createApp({
 				const token = /(?:^|;\s*)opsweave_session=([^;]+)/.exec(
 					req.headers.cookie || "",
 				)?.[1];
-				store.db.prepare("DELETE FROM sessions WHERE hash=?").run(hash(token));
+				await store.db
+					.prepare("DELETE FROM sessions WHERE hash=?")
+					.run(hash(token));
 				res.setHeader(
 					"Set-Cookie",
 					"opsweave_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0",
@@ -278,9 +297,9 @@ export function createApp({
 			if (path === "/api/keys" && req.method === "GET")
 				return send(
 					200,
-					store.db
+					await store.db
 						.prepare(
-							"SELECT last_four AS lastFour,expires FROM api_keys WHERE owner=?",
+							`SELECT last_four AS "lastFour",expires FROM api_keys WHERE owner=?`,
 						)
 						.all(owner),
 				);
@@ -288,13 +307,15 @@ export function createApp({
 				const input = await body(req);
 				const key = `ow_${randomBytes(32).toString("base64url")}`;
 				const expires = Date.now() + 30 * day;
-				store.transaction(() => {
-					store.db.prepare("DELETE FROM api_keys WHERE owner=?").run(owner);
+				await store.transaction(async () => {
+					await store.db
+						.prepare("DELETE FROM api_keys WHERE owner=?")
+						.run(owner);
 					if (!input.revoke)
-						store.db
+						await store.db
 							.prepare("INSERT INTO api_keys VALUES(?,?,?,?)")
 							.run(hash(key), owner, expires, key.slice(-4));
-					store.event(
+					await store.event(
 						owner,
 						{ id: owner },
 						input.revoke ? "key.revoked" : "key.rotated",
@@ -304,10 +325,10 @@ export function createApp({
 				return send(201, { key, expires });
 			}
 			if (path === "/api/playbooks" && req.method === "GET")
-				return send(200, store.list(owner, "playbook"));
+				return send(200, await store.list(owner, "playbook"));
 			if (path === "/api/playbooks" && req.method === "POST") {
 				const draft = validatePlaybook(await body(req));
-				if (store.list(owner, "playbook").length >= 100)
+				if ((await store.list(owner, "playbook")).length >= 100)
 					throw new Problem(429, "workspace_limit");
 				const playbook = {
 					...draft,
@@ -317,9 +338,9 @@ export function createApp({
 					updated: Date.now(),
 					published: null,
 				};
-				store.transaction(() => {
-					store.put(owner, "playbook", playbook);
-					store.event(owner, playbook, "playbook.created");
+				await store.transaction(async () => {
+					await store.put(owner, "playbook", playbook);
+					await store.event(owner, playbook, "playbook.created");
 				});
 				return send(201, playbook);
 			}
@@ -328,8 +349,8 @@ export function createApp({
 			);
 			if (playbookRoute && ["PUT", "POST"].includes(req.method)) {
 				const input = await body(req);
-				const saved = store.transaction(() => {
-					const p = store.get(owner, "playbook", playbookRoute[1]);
+				const saved = await store.transaction(async () => {
+					const p = await store.get(owner, "playbook", playbookRoute[1]);
 					if (!p) throw new Problem(404, "not_found");
 					if (p.revision !== input.revision)
 						throw new Problem(409, "revision_conflict");
@@ -345,20 +366,20 @@ export function createApp({
 					else throw new Problem(405, "method_not_allowed");
 					p.revision++;
 					p.updated = Date.now();
-					store.event(
+					await store.event(
 						owner,
 						p,
 						playbookRoute[2] ? "playbook.published" : "playbook.updated",
 						String(p.revision),
 					);
-					return store.put(owner, "playbook", p);
+					return await store.put(owner, "playbook", p);
 				});
 				return send(200, saved);
 			}
 			if (path === "/api/runs" && req.method === "GET")
-				return send(200, store.list(owner, "run"));
+				return send(200, await store.list(owner, "run"));
 			if (path === "/api/runs" && req.method === "POST") {
-				const result = accept(
+				const result = await accept(
 					store,
 					owner,
 					await body(req),
@@ -369,7 +390,7 @@ export function createApp({
 			const runRoute =
 				/^\/api\/runs\/([\w-]+)(\/(actions|replay|export))?$/.exec(path);
 			if (runRoute) {
-				const run = store.get(owner, "run", runRoute[1]);
+				const run = await store.get(owner, "run", runRoute[1]);
 				if (!run) throw new Problem(404, "not_found");
 				if (
 					req.method === "GET" &&
@@ -380,15 +401,18 @@ export function createApp({
 							"Content-Disposition",
 							`attachment; filename="opsweave-${run.id}.json"`,
 						);
-					return send(200, { ...run, events: store.events(owner, run.id) });
+					return send(200, {
+						...run,
+						events: await store.events(owner, run.id),
+					});
 				}
 				if (req.method === "POST" && runRoute[3] === "actions")
-					return send(200, act(store, owner, run.id, await body(req)));
+					return send(200, await act(store, owner, run.id, await body(req)));
 				if (req.method === "POST" && runRoute[3] === "replay") {
 					await body(req);
 					if (!["failed", "cancelled", "completed"].includes(run.status))
 						throw new Problem(409, "invalid_transition");
-					const result = accept(
+					const result = await accept(
 						store,
 						owner,
 						run,
@@ -417,8 +441,8 @@ export function createApp({
 			if (timer) clearInterval(timer);
 			server.closeAllConnections();
 			return new Promise((resolveClose) =>
-				server.close(() => {
-					store.close();
+				server.close(async () => {
+					await store.close();
 					resolveClose();
 				}),
 			);
@@ -431,7 +455,9 @@ if (
 ) {
 	process.umask(0o077);
 	const configuredOrigin =
-		process.env.PUBLIC_ORIGIN || "http://127.0.0.1:32320";
+		process.env.PUBLIC_ORIGIN ||
+		process.env.RENDER_EXTERNAL_URL ||
+		"http://127.0.0.1:32320";
 	const parsedOrigin = new URL(configuredOrigin);
 	if (
 		parsedOrigin.username ||
@@ -447,11 +473,12 @@ if (
 	const origin = parsedOrigin.origin;
 	if (
 		process.env.NODE_ENV === "production" &&
-		(!process.env.PUBLIC_ORIGIN || !origin.startsWith("https://"))
+		(!(process.env.PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL) ||
+			!origin.startsWith("https://"))
 	)
 		throw new Error("Production requires PUBLIC_ORIGIN=https://your-host");
-	const app = createApp({
-		database: process.env.DATABASE_PATH || resolve("data/opsweave.sqlite"),
+	const app = await createApp({
+		database: process.env.DATABASE_URL,
 		publicDir: resolve(process.env.PUBLIC_DIR || "dist/opsweave-public"),
 		origin,
 		secure: origin.startsWith("https://"),

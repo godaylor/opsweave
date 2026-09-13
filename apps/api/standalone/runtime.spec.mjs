@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+
 import { randomUUID } from "node:crypto";
 import { createApp } from "./server.mjs";
 import { tick } from "./engine.mjs";
+import { Store } from "./store.mjs";
+import { importSqlite } from "./import-sqlite.mjs";
+import { DatabaseSync } from "node:sqlite";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const draft = (
 	steps = [
@@ -15,14 +19,22 @@ const draft = (
 		{ type: "resolve", title: "Resolve" },
 	],
 ) => ({ name: "Recovery", description: "Real response", steps });
-describe("Original standalone runtime (isolated SQLite, no CE services)", () => {
+describe("Original standalone runtime (isolated Postgres, no CE services)", () => {
 	let app;
 	let base;
-	let directory;
-	async function start(database = join(directory, "test.sqlite")) {
+	let schema;
+	const database = process.env.TEST_DATABASE_URL;
+	if (
+		!database ||
+		new URL(database).pathname !== "/opsweave_test" ||
+		!["127.0.0.1", "localhost"].includes(new URL(database).hostname)
+	)
+		throw new Error("Tests require an isolated local opsweave_test database");
+	async function start() {
 		for (let port = 32340; port <= 32359; port++) {
-			const candidate = createApp({
+			const candidate = await createApp({
 				database,
+				schema,
 				origin: `http://127.0.0.1:${port}`,
 				startWorker: false,
 			});
@@ -35,19 +47,19 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 				base = `http://127.0.0.1:${port}`;
 				return;
 			} catch (e) {
-				candidate.store.close();
+				await candidate.store.close();
 				if (e.code !== "EADDRINUSE") throw e;
 			}
 		}
 		throw new Error("No isolated OpsWeave test port available");
 	}
 	beforeEach(async () => {
-		directory = mkdtempSync(join(tmpdir(), "opsweave-unit-"));
+		schema = `opsweave_test_${randomUUID().replaceAll("-", "")}`;
 		await start();
 	});
 	afterEach(async () => {
 		await app.close();
-		rmSync(directory, { recursive: true, force: true });
+		// Keep isolated test schemas for post-failure inspection; never drop a shared database.
 	});
 	async function request(path, method = "GET", data, cookie, key, extra = {}) {
 		const result = await fetch(`${base}/api${path}`, {
@@ -105,8 +117,8 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 		const accepted = await run(g.cookie, p);
 		assert.equal(accepted.status, 202);
 		const id = accepted.data.run.id;
-		tick(app.store);
-		tick(app.store);
+		await tick(app.store);
+		await tick(app.store);
 		let detail = await request(`/runs/${id}`, "GET", undefined, g.cookie);
 		assert.equal(detail.data.status, "waiting");
 		let r = await request(
@@ -120,7 +132,7 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 			g.cookie,
 		);
 		assert.equal(r.status, 200);
-		tick(app.store);
+		await tick(app.store);
 		detail = await request(`/runs/${id}`, "GET", undefined, g.cookie);
 		r = await request(
 			`/runs/${id}/actions`,
@@ -133,11 +145,11 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 			g.cookie,
 		);
 		assert.equal(r.status, 200);
-		tick(app.store);
+		await tick(app.store);
 		await new Promise((resolve) => setTimeout(resolve, 1050));
-		tick(app.store);
-		tick(app.store);
-		tick(app.store);
+		await tick(app.store);
+		await tick(app.store);
+		await tick(app.store);
 		detail = await request(`/runs/${id}/export`, "GET", undefined, g.cookie);
 		assert.equal(detail.data.status, "completed");
 		assert.equal(detail.data.incidentStatus, "resolved");
@@ -154,14 +166,14 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 			]),
 		);
 		const accepted = await run(g.cookie, p);
-		tick(app.store);
+		await tick(app.store);
 		await app.close();
 		await new Promise((resolve) => setTimeout(resolve, 1050));
 		await start();
-		tick(app.store);
-		tick(app.store);
-		tick(app.store);
-		tick(app.store);
+		await tick(app.store);
+		await tick(app.store);
+		await tick(app.store);
+		await tick(app.store);
 		const r = await request(
 			`/runs/${accepted.data.run.id}`,
 			"GET",
@@ -173,6 +185,80 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 			r.data.events.filter((e) => e.type === "incident.resolved").length,
 			1,
 		);
+	});
+	it("serializes timer effects and acceptance across two database connections", async () => {
+		const g = await guest();
+		const p = await publish(
+			g.cookie,
+			draft([
+				{ type: "note", title: "Only once" },
+				{ type: "resolve", title: "Resolve" },
+			]),
+		);
+		const second = new Store(database, schema);
+		try {
+			await second.initialize();
+			const { accept } = await import("./engine.mjs");
+			const key = randomUUID();
+			const input = {
+				title: "Parallel",
+				service: "api",
+				severity: "high",
+				playbookId: p.id,
+			};
+			const results = await Promise.all([
+				accept(app.store, g.data.id, input, key),
+				accept(second, g.data.id, input, key),
+			]);
+			assert.equal(results[0].run.id, results[1].run.id);
+			assert.equal(results.filter((r) => r.duplicate).length, 1);
+			for (let i = 0; i < 3; i++)
+				await Promise.all([tick(app.store), tick(second)]);
+			const history = await second.events(g.data.id, results[0].run.id);
+			for (const type of [
+				"incident.created",
+				"note.recorded",
+				"incident.resolved",
+				"run.completed",
+			])
+				assert.equal(history.filter((e) => e.type === type).length, 1);
+		} finally {
+			await second.close();
+		}
+	});
+	it("imports SQLite atomically, preserves the source and refuses a nonempty target", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "opsweave-copy-"));
+		const source = join(directory, "source.sqlite");
+		const sqlite = new DatabaseSync(source);
+		sqlite.exec(`CREATE TABLE users(id TEXT PRIMARY KEY,email TEXT,password TEXT,created INTEGER,disabled INTEGER);
+   CREATE TABLE sessions(hash TEXT,user_id TEXT,expires INTEGER);
+   CREATE TABLE records(id TEXT,owner TEXT,kind TEXT,body TEXT);
+   CREATE TABLE events(seq INTEGER PRIMARY KEY,owner TEXT,run_id TEXT,body TEXT);
+   CREATE TABLE acceptance(owner TEXT,key TEXT,digest TEXT,run_id TEXT);
+   CREATE TABLE api_keys(hash TEXT,owner TEXT,expires INTEGER,last_four TEXT);
+   INSERT INTO users VALUES('copy-owner',NULL,NULL,1,0);`);
+		sqlite
+			.prepare("INSERT INTO records VALUES(?,?,?,?)")
+			.run(
+				"copy-book",
+				"copy-owner",
+				"playbook",
+				JSON.stringify({ id: "copy-book", name: "Preserved", revision: 1 }),
+			);
+		sqlite.close();
+		const before = readFileSync(source);
+		try {
+			const count = await importSqlite(source, app.store);
+			assert.equal(count.records, 1);
+			assert.equal(
+				(await app.store.get("copy-owner", "playbook", "copy-book")).name,
+				"Preserved",
+			);
+			await assert.rejects(importSqlite(source, app.store), /must be empty/);
+			assert.deepEqual(readFileSync(source), before);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
 	});
 	it("accepts concurrent duplicate requests atomically and rejects conflicting payloads", async () => {
 		const g = await guest();
@@ -300,7 +386,7 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 			draft([{ type: "approval", title: "Approve" }]),
 		);
 		const r = await run(g.cookie, p);
-		tick(app.store);
+		await tick(app.store);
 		const id = r.data.run.id;
 		const input = {
 			action: "reject",
@@ -339,8 +425,8 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 			]),
 		);
 		const r = await run(g.cookie, p);
-		tick(app.store);
-		tick(app.store);
+		await tick(app.store);
+		await tick(app.store);
 		const detail = await request(
 			`/runs/${r.data.run.id}`,
 			"GET",
@@ -452,7 +538,7 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 			(await request("/auth/me", "GET", undefined, login.cookie)).status,
 			401,
 		);
-		app.store.db.prepare("UPDATE sessions SET expires=0").run();
+		await app.store.db.prepare("UPDATE sessions SET expires=0").run();
 		assert.equal(
 			(await request("/runs", "GET", undefined, account.cookie)).status,
 			401,
@@ -468,7 +554,7 @@ describe("Original standalone runtime (isolated SQLite, no CE services)", () => 
 			).status,
 			403,
 		);
-		app.store.db
+		await app.store.db
 			.prepare("UPDATE users SET disabled=1 WHERE id=?")
 			.run(g.data.id);
 		assert.equal(
