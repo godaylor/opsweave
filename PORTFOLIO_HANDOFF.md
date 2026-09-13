@@ -35,9 +35,9 @@ This edition has personal workspaces, not shared-team RBAC. External Slack/email
 - **GitHub:** https://github.com/godaylor/opsweave
 - **Implemented source:** https://github.com/godaylor/opsweave/tree/codex/standalone-product
 - **Review:** https://github.com/godaylor/opsweave/pull/1
-- **Verified CI:** https://github.com/godaylor/opsweave/actions/runs/34547004457
+- **Verified PostgreSQL CI:** https://github.com/godaylor/opsweave/actions/runs/34771650697
 - **Live URL:** **not available — public deployment requires free database access and release verification**.
-- **Local image preview:** http://127.0.0.1:32323 (not production).
+- **Local PostgreSQL preview:** http://127.0.0.1:32325 (not production).
 
 ## Best screenshots
 

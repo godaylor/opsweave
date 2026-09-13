@@ -2,6 +2,8 @@
 
 ## Managed PostgreSQL continuation
 
+GitHub CI on implementation commit `d374f0a`: **PASS**, all steps including PostgreSQL tests, desktop/mobile E2E and Docker. [Run 34771650697](https://github.com/godaylor/opsweave/actions/runs/34771650697). Local PostgreSQL preview: http://127.0.0.1:32325 (not public production). Render has accepted the updated free Blueprint and requests only DATABASE_URL; the previous paid-disk billing step is absent.
+
 The existing standalone product is preserved. Persistence is now managed-Postgres-compatible through approved, pinned pg 8.23.0; no runtime SQLite fallback or Render disk remains. Tables are in a private schema with public privileges revoked and RLS enabled. The server role owns the tables; API ownership predicates enforce personal-workspace isolation. SSL verification is mandatory for remote databases. Schema selection is transaction-local for pooler compatibility. Short app-scoped advisory locks serialize acceptance, revisions and execution across replicas.
 
 Verified locally against a new disposable PostgreSQL 17 container, separate from every existing project's data:
