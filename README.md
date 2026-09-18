@@ -6,7 +6,7 @@
 
 Это рабочее приложение с сервером и базой данных. Гостевой вход создаёт отдельное личное пространство, без общих демонстрационных данных. Аккаунт сохраняет доступ между устройствами. RU включён по умолчанию; EN переключается в интерфейсе.
 
-**Public production:** hosting is not connected yet. The historical GitHub Pages address is a static predecessor and is **not** the live application. Use the local instructions below or provision the included deployment blueprint.
+**Live app: [opsweave.onrender.com](https://opsweave.onrender.com)** — Render Free without a disk + Neon Free PostgreSQL (Frankfurt). Full public desktop/mobile workflow verified on 2026-09-18. The first request after inactivity can take 50 seconds or more.
 
 ![Incident response with a real action](screenshots/03-incident-action.png)
 
@@ -104,7 +104,7 @@ The build generates exact third-party license texts and an SPDX browser dependen
 
 Deploy **one Render Free web service, without any persistent disk**, plus a dedicated **Neon Free Postgres** database. Supabase Free also works with a session-pooler URL, but the current account has exhausted its free-project limit; do not pause or alter other projects to free capacity. Never select a paid tier.
 
-[Open the Render blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/godaylor/opsweave). Select the implementation branch while PR #1 is open. The blueprint sets `plan: free`, derives the HTTPS origin, and prompts for `DATABASE_URL` as a server secret. Frontend and backend share one origin. No disk or billing upgrade is required by this configuration. Do not paste the database URL into Git, screenshots, a public build variable or documentation.
+[Open the Render blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/godaylor/opsweave). Select `main`; PR #1 has been merged. The blueprint sets `plan: free`, derives the HTTPS origin, and prompts for `DATABASE_URL` as a server secret. Frontend and backend share one origin. No disk or billing upgrade is required by this configuration. Do not paste the database URL into Git, screenshots, a public build variable or documentation.
 
 Remote connections require verified TLS. Use the pooler endpoint supplied by Neon or Supabase rather than guessing its host. All queries use transaction-scoped schema selection, compatible with transaction pooling. The private schema has RLS enabled and no public grants; browser clients never receive database credentials. The server's database role owns the app tables; user isolation is enforced by the API's owner predicates, not Supabase Auth policies.
 

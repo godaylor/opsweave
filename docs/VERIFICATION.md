@@ -1,6 +1,24 @@
-# OpsWeave standalone verification — 2026-09-13
+# OpsWeave standalone verification — 2026-09-18
 
-## Managed PostgreSQL continuation
+## Public release — 2026-09-18
+
+**Live: https://opsweave.onrender.com**. Frontend and API share HTTPS on Render Free, service `srv-damoq7sri2ms73b8qfr0`, with no persistent disk. Production data is in the existing Neon Free project opsweave, Frankfurt, PostgreSQL 18. DATABASE_URL is a server secret, absent from source and browser assets. The additive six-table private schema was applied on a validation branch first, then production. Existing local SQLite data was left untouched; private historical data was not uploaded.
+
+PR #1 is merged. Runtime source: main `83d4eb02715dc99ab83ed7b66fc98a9c314392d3`; [CI 35389992408](https://github.com/godaylor/opsweave/actions/runs/35389992408) PASS. Render deploy `dep-dampmbjm8hqs73aca7p0` is live. Public health returns ready/postgres/ready.
+
+- **Public Playwright: 2/2 PASS, retries=0, 1.1 minutes.** Desktop 52.8s: create/save/publish scenario → incident → responder task → approval → durable timer → completed/resolved → reload → persisted history/JSON export → English analytics. Mobile 8.7s: guest workspace, scenario editing/saving, no horizontal overflow. No browser page errors during desktop flow.
+- Server regression: 13 tests PASS. Types, lint, build, npm production audit, local browser checks and Docker build PASS in GitHub CI.
+- Post-redeploy Neon queries confirmed both earlier public test runs remained completed/resolved. No data reset was used to obtain a pass.
+- Full offline image SPDX/CVE scan is now executed: [report](release/README.md). All available fixes applied; zero Node package findings, zero findings with an available fixed version. Remaining Debian advisories are retained and explained; this is not a zero-CVE claim.
+- Screenshots now come from the successful public browser run. Earlier accessibility/bundle measurements below remain dated local evidence; they are not new public field measurements.
+
+### Failed public attempts and correction
+
+The first desktop run on d7e6921 exceeded the existing 15-second completion assertion, although Neon confirmed eventual completion; mobile passed. Render Oregon to Neon Frankfurt latency amplified repeated transaction setup queries. Commit 320a324 batches transaction setup into one round trip, preserving locks, parameterization and the same 15-second assertion; all 13 regression tests passed. The next public run passed completion and reload but suffered a socket hang-up on export, followed by a mobile navigation timeout. The final run on 83d4eb0 passed both flows with no retries. These earlier failures are retained as failures, not silently counted as passes.
+
+Free services can sleep and have quotas: first requests may take 50 seconds or more, and timers resume from persisted deadlines after wake; exact wall-clock delivery while asleep is not promised. No paid service, artificial keepalive, or other project's resource was created/changed. Automatic review refused an optional stop of the validation-branch compute; it was left unchanged and does not block the release.
+
+## Historical managed PostgreSQL preparation — 2026-09-13
 
 GitHub CI on implementation commit `d374f0a`: **PASS**, all steps including PostgreSQL tests, desktop/mobile E2E and Docker. [Run 34771650697](https://github.com/godaylor/opsweave/actions/runs/34771650697). Local PostgreSQL preview: http://127.0.0.1:32325 (not public production). Render has accepted the updated free Blueprint and requests only DATABASE_URL; the previous paid-disk billing step is absent.
 

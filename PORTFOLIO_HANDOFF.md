@@ -1,6 +1,6 @@
 # OpsWeave — portfolio handoff
 
-**Status: implementation verified; public release pending.** Do not label the historical GitHub Pages address as the live app.
+**Status: public standalone release verified on 2026-09-18. Live: https://opsweave.onrender.com.**
 
 ## Product
 
@@ -11,7 +11,7 @@
 
 ## Actual stack
 
-React 19.2.3, TypeScript 5.6.2, React Hook Form 7.71.1, TanStack Query 5.101.2, Vite 6.4.3, original CSS, Node.js 22.23.0 release image, built-in HTTP/crypto/scrypt, PostgreSQL with pg 8.23.0, Mocha 10.2.0, Playwright 1.58.2/Chromium, Biome 2.2.0, Docker and GitHub Actions. Local axe 4.13.0 checks reuse the existing development tool. Render Blueprint is prepared but not provisioned.
+React 19.2.3, TypeScript 5.6.2, React Hook Form 7.71.1, TanStack Query 5.101.2, Vite 6.4.3, original CSS, Node.js 22.23.0 release image, built-in HTTP/crypto/scrypt, PostgreSQL with pg 8.23.0, Mocha 10.2.0, Playwright 1.58.2/Chromium, Biome 2.2.0, Docker and GitHub Actions. Local axe 4.13.0 checks reuse the existing development tool. Render Free without disk and Neon Free PostgreSQL 18 (Frankfurt) are deployed.
 
 ## Main capabilities
 
@@ -33,15 +33,15 @@ This edition has personal workspaces, not shared-team RBAC. External Slack/email
 ## Links
 
 - **GitHub:** https://github.com/godaylor/opsweave
-- **Implemented source:** https://github.com/godaylor/opsweave/tree/codex/standalone-product
+- **Implemented source:** https://github.com/godaylor/opsweave/tree/main
 - **Review:** https://github.com/godaylor/opsweave/pull/1
-- **Verified PostgreSQL CI:** https://github.com/godaylor/opsweave/actions/runs/34771650697
-- **Live URL:** **not available — public deployment requires free database access and release verification**.
+- **Verified PostgreSQL CI:** https://github.com/godaylor/opsweave/actions/runs/35389992408
+- **Live URL:** https://opsweave.onrender.com
 - **Local PostgreSQL preview:** http://127.0.0.1:32325 (not production).
 
 ## Best screenshots
 
-All screenshots show actual local application screens, not fabricated production results.
+Screenshots show the successful public browser verification on 2026-09-18.
 
 - [Incident and next action](screenshots/03-incident-action.png) — strongest portfolio overview.
 - [Playbook editor](screenshots/02-playbook-editor.png).
@@ -52,11 +52,11 @@ All screenshots show actual local application screens, not fabricated production
 
 ## Licensing / provenance
 
-Original standalone code is MIT. The export contains no Novu runtime/UI/framework/DAL/providers, Enterprise, Maily or BullMQ. Historical upstream implementation and mandatory licenses remain in the development workspace and are not published by this export. Six browser packages retain exact MIT notices and a generated SPDX inventory. No external media, downloaded fonts or icon packs are used. Full container SBOM/CVE verification remains open after Docker Scout's metadata transfer was rejected by automatic approval review.
+Original standalone code is MIT. The export contains no Novu runtime/UI/framework/DAL/providers, Enterprise, Maily or BullMQ. Historical upstream implementation and mandatory licenses remain in the development workspace and are not published by this export. Six browser packages retain exact MIT notices and a generated SPDX inventory. No external media, downloaded fonts or icon packs are used. Full container SPDX/CVE scanning was performed offline with Trivy; see docs/VERIFICATION.md and docs/release/README.md. Available fixes were applied; remaining unfixed Debian advisories are disclosed.
 
 ## What actually works in production
 
-**No public production behavior has been verified.** The complete create → publish → run → task → approval → timer → resolve → reload/export path passes locally and in GitHub CI against a real backend. The Linux image builds and runs locally. The paid Render disk has been removed. The current Blueprint uses Render Free and managed Postgres; Supabase free quota is exhausted and Neon login awaits authorization. No public service or Live URL has been provisioned. Main awaits approval to merge PR #1.
+The complete scenario → incident → task → approval → timer → completion → reload/history/export workflow passes against the public HTTPS app. Desktop and mobile Playwright: 2/2, retries=0. Neon retained completed runs across Render redeploys. PR #1 is merged into main; CI is green. Frontend and backend run together on Render Free, with DATABASE_URL stored privately and no persistent disk. Free-host sleep can delay first requests and timer execution; this is a public personal-workspace product, not an always-on paging SLA.
 
 ## Readiness assessment
 
@@ -64,13 +64,13 @@ These are engineering estimates for the current state, not measured reliability 
 
 | Category | Ready | Finished and checked | Remaining |
 |---|---:|---|---|
-| Concept and purpose | 95% | Clear incident-to-outcome workflow and explicit compact scope | Feedback from real responders |
-| UX/UI | 90% | RU/EN, mobile, states, execution timeline; browser checks and six axe states | Broader manual accessibility and device validation |
-| Core functionality | 85% | Full real scenario, conditions, approvals, replay/export, incoming API | Optional external delivery and shared-team collaboration |
-| Testing/security/quality | 85% | 13 server tests, desktop/mobile E2E, green CI, offline app scan, zero npm production advisories | Container CVEs/full image SBOM and production performance |
-| Backend/database/auth | 85% | Original durable server, isolated accounts, sessions, scoped keys, restart test | Email recovery and operational production validation |
-| Public production deploy | 15% | Reproducible image and prepared free diskless Blueprint | Free database access, actual deploy and public end-to-end check |
-| GitHub/docs/licensing | 90% | Personal repository, review branch/PR, CI, README, notices, screenshots | Authorized merge to main and full image scan |
-| Personal Portfolio readiness | 80% | Accurate description, stack, contribution and screenshots | Live URL and production evidence |
+| Concept and purpose | 95% | Clear incident-to-outcome workflow | Real responder feedback |
+| UX/UI | 90% | RU/EN, public desktop/mobile, local axe checks | Broader manual accessibility validation |
+| Core functionality | 90% | Full public workflow, history/export, local replay and conditions | Optional external delivery/team collaboration |
+| Testing/security/quality | 85% | 13 server tests, public E2E, CI, full offline image scan | Unfixed OS advisories and production load evidence |
+| Backend/database/auth | 90% | Neon, isolated accounts, sessions, scoped keys, restart persistence | Email recovery and long-term operations |
+| Public production deploy | 95% | Render Free + Neon Free, HTTPS, full public test | Free-tier sleep and quota limitations |
+| GitHub/docs/licensing | 95% | Merged main, green CI, notices, SBOM, release evidence | Future dependency/security maintenance |
+| Personal Portfolio readiness | 95% | Working Live URL, verified screenshots and accurate scope | Real-world feedback |
 
-**Overall: (95 + 90 + 85 + 85 + 85 + 15 + 90 + 80) / 8 = 78.125%, rounded to 78%.**
+**Overall: (95 + 90 + 90 + 85 + 90 + 95 + 95 + 95) / 8 = 91.875%, rounded to 92%.**
