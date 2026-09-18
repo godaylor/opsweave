@@ -1,0 +1,26 @@
+[
+  {
+    "name": "welcome",
+    "violations": []
+  },
+  {
+    "name": "workspace",
+    "violations": []
+  },
+  {
+    "name": "editor",
+    "violations": []
+  },
+  {
+    "name": "editor-mobile",
+    "violations": []
+  },
+  {
+    "name": "execution",
+    "violations": []
+  },
+  {
+    "name": "execution-mobile",
+    "violations": []
+  }
+]

@@ -1,0 +1,16 @@
+**
+!package.json
+!package-lock.json
+!LICENSE
+!THIRD-PARTY.md
+!apps/
+!apps/api/
+!apps/api/standalone/
+!apps/api/standalone/*.mjs
+!apps/dashboard/
+!apps/dashboard/standalone/
+!apps/dashboard/standalone/**
+!apps/dashboard/src/
+!apps/dashboard/src/components/
+!apps/dashboard/src/components/opsweave-standalone/
+!apps/dashboard/src/components/opsweave-standalone/**
