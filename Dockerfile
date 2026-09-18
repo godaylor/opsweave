@@ -10,6 +10,10 @@ COPY apps/api/standalone/notices.mjs ./apps/api/standalone/notices.mjs
 RUN node apps/api/standalone/notices.mjs
 
 FROM node:22.23.0-bookworm-slim
+# Apply available Debian security fixes and omit package managers from runtime.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=32320
 WORKDIR /app
 COPY --from=build /app/dist/opsweave-public ./dist/opsweave-public
