@@ -75,9 +75,9 @@ export class Store {
 		if (current) return current.query(sql, values);
 		const client = await this.pool.connect();
 		try {
-			await client.query("BEGIN");
-			await client.query(`SET LOCAL search_path TO "${this.schema}"`);
-			await client.query("SET LOCAL statement_timeout = '10s'");
+			// One setup round trip matters when app and managed DB are in different regions.
+			// schema is restricted to the identifier allowlist in the constructor.
+			await client.query(`BEGIN; SET LOCAL search_path TO "${this.schema}"; SET LOCAL statement_timeout = '10s'`);
 			const result = await client.query(sql, values);
 			await client.query("COMMIT");
 			return result;
@@ -92,10 +92,7 @@ export class Store {
 		if (this.context.getStore()) return fn();
 		const client = await this.pool.connect();
 		try {
-			await client.query("BEGIN");
-			await client.query(`SET LOCAL search_path TO "${this.schema}"`);
-			await client.query("SET LOCAL statement_timeout = '10s'");
-			await client.query("SET LOCAL lock_timeout = '8s'");
+			await client.query(`BEGIN; SET LOCAL search_path TO "${this.schema}"; SET LOCAL statement_timeout = '10s'; SET LOCAL lock_timeout = '8s'`);
 			// Serialize short state transitions across all instances, scoped to this app schema.
 			// This preserves atomic acceptance, revisions and exactly-once timer transitions.
 			await client.query(
