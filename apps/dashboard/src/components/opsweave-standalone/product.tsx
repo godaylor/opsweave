@@ -12,10 +12,13 @@ import {
 	type Run,
 } from "./api";
 const Editor = lazy(() => import("./editor"));
+const Learn = lazy(() => import("./learn"));
+import { Guide } from "./guide";
 type User = { id: string; email: string | null };
 const nav = [
+	["learn", "?", "Как пользоваться", "How to use"],
 	["incidents", "◉", "Инциденты", "Incidents"],
-	["playbooks", "⌘", "Сценарии", "Playbooks"],
+	["playbooks", "⌘", "Планы действий", "Action plans"],
 	["analytics", "▥", "Аналитика", "Analytics"],
 	["integrations", "↗", "Интеграции", "Integrations"],
 	["account", "◎", "Аккаунт", "Account"],
@@ -94,6 +97,7 @@ export default function Product() {
 			<Auth
 				locale={locale}
 				localeButton={changeLocale}
+				onLearn={() => navigate("learn")}
 				onSuccess={() => {
 					query.clear();
 					me.refetch();
@@ -198,7 +202,7 @@ export default function Product() {
 						)}
 					</span>
 					<span className="topbar-note">
-						{t("Ваше изолированное пространство", "Your private workspace")}
+						{t("Личные записи на сервере", "Your records on the server")}
 					</span>
 					<div className="mobile-controls">
 						{changeLocale}
@@ -212,8 +216,8 @@ export default function Product() {
 						<div className="guest-banner">
 							<span>
 								{t(
-									"Сохраните доступ к своим сценариям: создайте аккаунт до завершения гостевой сессии.",
-									"Keep access to your playbooks: create an account before your guest session expires.",
+									"Сохраните доступ к своим планам действий: создайте аккаунт до завершения гостевой сессии.",
+									"Keep access to your action plans: create an account before your guest session expires.",
 								)}
 							</span>
 							<button onClick={() => navigate("account")}>
@@ -261,13 +265,11 @@ export default function Product() {
 													"PREPARE BEFORE THE INCIDENT",
 												)}
 											</p>
-											<h1>
-												{t("Сценарии реагирования", "Response playbooks")}
-											</h1>
+											<h1>{t("Планы действий", "Response action plans")}</h1>
 											<p className="muted">
 												{t(
-													"Превратите опыт команды в понятную последовательность действий.",
-													"Turn team knowledge into a clear sequence of actions.",
+													"Подготовьте инструкцию для сбоя сайта, API или другого IT-сервиса. Действия выполняете вы, приложение хранит порядок и результат.",
+													"Prepare instructions for a website, API or other IT service failure. You perform the actions; the app keeps their order and outcome.",
 												)}
 											</p>
 										</div>
@@ -275,7 +277,7 @@ export default function Product() {
 											className="primary"
 											onClick={() => navigate("editor")}
 										>
-											+ {t("Создать сценарий", "Create playbook")}
+											+ {t("Создать план", "Create action plan")}
 										</button>
 									</div>
 									{!playbooks.data?.length ? (
@@ -283,14 +285,14 @@ export default function Product() {
 											<span className="empty-symbol">⌘</span>
 											<h2>
 												{t(
-													"Первый сценарий — ваш план на случай сбоя",
-													"Your first playbook is a plan for the next incident",
+													"Подготовьте первый план на случай сбоя",
+													"Prepare your first plan for an IT failure",
 												)}
 											</h2>
 											<p>
 												{t(
-													"Добавьте задачи, согласование и проверку результата. Или начните с редактируемого шаблона восстановления.",
-													"Add tasks, an approval and outcome verification. Or start with an editable recovery template.",
+													"Добавьте задачи, подтверждение и проверку результата. Или начните с редактируемого шаблона восстановления.",
+													"Add tasks, an confirmation and outcome verification. Or start with an editable recovery template.",
 												)}
 											</p>
 											<button
@@ -298,8 +300,8 @@ export default function Product() {
 												onClick={() => navigate("editor")}
 											>
 												{t(
-													"Создать первый сценарий",
-													"Create your first playbook",
+													"Создать первый план",
+													"Create your first action plan",
 												)}{" "}
 												→
 											</button>
@@ -358,6 +360,30 @@ export default function Product() {
 									/>
 								</Suspense>
 							)}
+							{page === "learn" && (
+								<Suspense
+									fallback={
+										<p aria-busy="true">
+											{t("Загружаем пример…", "Loading example…")}
+										</p>
+									}
+								>
+									<Learn
+										key={me.data.id}
+										locale={locale}
+										userId={me.data.id}
+										renderRun={(runId) => (
+											<RunDetail
+												key={runId}
+												locale={locale}
+												id={runId}
+												back={() => navigate("incidents")}
+												navigate={navigate}
+											/>
+										)}
+									/>
+								</Suspense>
+							)}
 							{page === "incidents" && (
 								<Incidents
 									locale={locale}
@@ -406,8 +432,8 @@ export default function Product() {
 										</h2>
 										<p>
 											{t(
-												"Сценарии, запуски и ключ интеграции доступны только в вашем аккаунте. Общих гостевых данных нет.",
-												"Your account owns its playbooks, runs and integration key. Guest data is never shared.",
+												"Планы действий, выполнения и ключ интеграции доступны только в вашем аккаунте. Общих гостевых данных, приглашений и командных ролей нет.",
+												"Your account owns its action plans, executions and integration key. Guest data is never shared. Invitations and team roles are not available.",
 											)}
 										</p>
 										<p>
@@ -432,17 +458,24 @@ function Auth({
 	localeButton,
 	onSuccess,
 	error,
+	onLearn,
 }: {
 	locale: Locale;
 	localeButton: React.ReactNode;
 	onSuccess: () => void;
 	error: unknown;
+	onLearn: () => void;
 }) {
 	const t = (ru: string, en: string) => (locale === "ru" ? ru : en);
 	const [mode, setMode] = useState<"login" | "register">("login");
+	const [intro, setIntro] = useState(false);
+	const help = useRef<HTMLButtonElement>(null);
 	const guest = useMutation({
 		mutationFn: () => api("/auth/guest", "POST", {}),
-		onSuccess,
+		onSuccess: () => {
+			onLearn();
+			onSuccess();
+		},
 	});
 	return (
 		<div className="auth-page">
@@ -450,32 +483,75 @@ function Auth({
 				<a className="brand" href="/">
 					<span className="brand-mark">W</span>OpsWeave
 				</a>
-				{localeButton}
+				<div className="actions">
+					<button ref={help} onClick={() => setIntro(true)}>
+						{t("Как пользоваться", "How to use")}
+					</button>
+					{localeButton}
+				</div>
 			</header>
+			{intro && (
+				<div className="welcome-guide">
+					<Guide
+						locale={locale}
+						onClose={() => {
+							setIntro(false);
+							help.current?.focus();
+						}}
+						steps={[
+							{
+								title: t(
+									"Откройте учебный пример",
+									"Open the practice example",
+								),
+								text: t(
+									"Кнопка ниже создаёт ваше отдельное гостевое пространство. Учебные шаги вы выполните сами, без действий с реальным сайтом.",
+									"The button below creates your own guest workspace. You will perform practice steps yourself, without affecting a real website.",
+								),
+								target: "[data-learn='guest']",
+							},
+							{
+								title: t("Войдите для своей работы", "Sign in for your work"),
+								text: t(
+									"Используйте личный аккаунт или регистрацию. Общих аккаунтов, приглашений и командных ролей здесь нет.",
+									"Use your personal account or sign up. There are no shared accounts, invitations or team roles here.",
+								),
+								target: "[data-learn='login']",
+							},
+							{
+								title: t("Сохраните доступ", "Keep access"),
+								text: t(
+									"У гостя записи сохраняются на сервере, а доступ держится на cookie 7 дней. Регистрация сохраняет эти же записи за вашим аккаунтом. Восстановления пароля по почте пока нет.",
+									"Guest records are saved on the server; access depends on a cookie lasting 7 days. Signing up keeps those records under your account. Email password recovery is not available.",
+								),
+								target: "[data-learn='guest']",
+							},
+						]}
+					/>
+				</div>
+			)}
 			<main className="auth-layout">
 				<section className="auth-story">
 					<p className="eyebrow">
-						{t(
-							"INCIDENT RESPONSE · ПОД КОНТРОЛЕМ",
-							"INCIDENT RESPONSE · UNDER CONTROL",
-						)}
+						{t("СБОЙ САЙТА ИЛИ IT-СЕРВИСА", "WEBSITE OR IT SERVICE FAILURE")}
 					</p>
 					<h1>
-						{t("Когда сервис падает,", "When a service fails,")}
-						<br />
-						<span>{t("план уже есть.", "the plan is ready.")}</span>
+						{t(
+							"Пошаговые планы для устранения сбоев сайтов и IT-сервисов",
+							"Step-by-step plans for website and IT service failures",
+						)}
 					</h1>
 					<p className="auth-lead">
 						{t(
-							"Соберите сценарий. Запустите реагирование. Выполните задачи и согласуйте действия — с историей каждого шага.",
-							"Build a playbook. Start the response. Complete tasks and approve actions — with a history of every step.",
+							"В интернет-магазине перестала работать оплата. Откройте подготовленный план: проверить ошибку, связаться с ответственным специалистом, подтвердить шаги и записать результат.",
+							"Checkout stopped working in an online store. Open a prepared plan: check the error, contact the responsible specialist, confirm the steps and record the outcome.",
 						)}
 					</p>
 					<div className="auth-process">
 						<div>
 							<b>01</b>
 							<span>
-								{t("Сценарий", "Playbook")}
+								{t("План", "Action plan")}
 								<small>
 									{t("Ваш порядок действий", "Your sequence of actions")}
 								</small>
@@ -494,11 +570,16 @@ function Auth({
 							<b>03</b>
 							<span>
 								{t("Результат", "Outcome")}
-								<small>{t("Сохранённая история", "A durable history")}</small>
+								<small>{t("Сохранённая история", "A saved history")}</small>
 							</span>
 						</div>
 					</div>
 					<p className="privacy-note">
+						{t(
+							"Это учебная история, не автоматический ремонт. OpsWeave ведёт по инструкции; RelayOps служит для учёта проблем команды.",
+							"This is a practice story, not automatic repair. OpsWeave guides you through instructions; RelayOps tracks team issues.",
+						)}
+						<br />
 						{t(
 							"Отдельное пространство для каждого пользователя. Без общих демо-данных.",
 							"A separate workspace for every user. No shared demo data.",
@@ -506,30 +587,31 @@ function Auth({
 					</p>
 				</section>
 				<section className="auth-panel panel">
-					<h2>{t("Начните с одного сценария", "Start with one playbook")}</h2>
+					<h2>
+						{t("Попробовать на учебном примере", "Try a practice example")}
+					</h2>
 					<p className="muted">
 						{t(
-							"Создайте личное пространство без регистрации. Позже можно привязать почту и сохранить доступ.",
-							"Create a personal workspace without signing up. Add your email later to keep access.",
+							"Пример про недоступную оплату создаётся в отдельном пространстве посетителя. Без регистрации и без реальных внешних действий.",
+							"The checkout example uses your own visitor workspace. No signup and no real external actions.",
 						)}
 					</p>
 					<button
 						className="primary wide"
+						data-learn="guest"
+						aria-label={t("Открыть учебный пример", "Open practice example")}
 						disabled={guest.isPending}
 						onClick={() => guest.mutate()}
 					>
 						{guest.isPending
 							? t("Создаём пространство…", "Creating workspace…")
-							: t(
-									"Начать в личном пространстве",
-									"Start in a private workspace",
-								)}{" "}
+							: t("Открыть учебный пример", "Open practice example")}{" "}
 						→
 					</button>
 					<p className="small muted">
 						{t(
-							"Гостевая сессия действует 7 дней.",
-							"Guest sessions last 7 days.",
+							"Записи сохраняются на сервере и не сбрасываются при обновлении. Доступ гостя — по cookie этого браузера на 7 дней; после выхода или потери cookie без регистрации вернуться нельзя.",
+							"Records are saved on the server and survive refresh. Guest access uses this browser’s cookie for 7 days; after signing out or losing the cookie, you cannot return unless you registered.",
 						)}
 					</p>
 					{Boolean(guest.error || error) && (
@@ -541,14 +623,14 @@ function Auth({
 						</div>
 					)}
 					<div className="auth-divider">
-						{t("или с аккаунтом", "or with an account")}
+						{t("Для личной работы", "For your own work")}
 					</div>
-					<div className="tabs">
+					<div className="tabs" data-learn="login" tabIndex={-1}>
 						<button
 							aria-pressed={mode === "login"}
 							onClick={() => setMode("login")}
 						>
-							{t("Войти", "Sign in")}
+							{t("Войти для работы", "Sign in for work")}
 						</button>
 						<button
 							aria-pressed={mode === "register"}
@@ -565,11 +647,17 @@ function Auth({
 					/>
 				</section>
 			</main>
+			<p className="hosting-note">
+				{t(
+					"После простоя первый запуск может занять более 50 секунд. Восстановление пароля по почте пока недоступно.",
+					"After inactivity the first request may take over 50 seconds. Email password recovery is not available yet.",
+				)}
+			</p>
 			<footer className="auth-footer">
 				OpsWeave ·{" "}
 				{t(
-					"Сценарии реагирования на инциденты",
-					"Incident response orchestration",
+					"Планы действий для IT-сбоев",
+					"Step-by-step plans for IT service failures",
 				)}
 			</footer>
 		</div>
@@ -698,8 +786,8 @@ function Incidents({
 					</h1>
 					<p className="muted">
 						{t(
-							"Запускайте сценарии, принимайте решения и следите за восстановлением.",
-							"Run playbooks, make decisions and track recovery.",
+							"Проходите план по порядку и сохраняйте результат выполненных вами действий.",
+							"Follow a plan in order and record the results of the actions you perform.",
 						)}
 					</p>
 				</div>
@@ -741,7 +829,9 @@ function Incidents({
 							).length
 						}
 					</strong>
-					<small>{t("Задачи и согласования", "Tasks and approvals")}</small>
+					<small>
+						{t("Задачи и подтверждения", "Tasks and confirmations")}
+					</small>
 				</div>
 				<div>
 					<span>{t("Устранены", "Resolved")}</span>
@@ -760,12 +850,12 @@ function Incidents({
 					<p>
 						{playbooks.some((p) => p.published)
 							? t(
-									"Ваш сценарий готов. Создайте инцидент — сервер начнёт выполнение и покажет, где нужно ваше действие.",
-									"Your playbook is ready. Create an incident — the server will execute it and show where your action is needed.",
+									"Ваш план готов. Создайте инцидент — сервер начнёт выполнение и покажет, где нужно ваше действие.",
+									"Your action plan is ready. Create an incident — the server will execute it and show where your action is needed.",
 								)
 							: t(
-									"Создайте и опубликуйте первый сценарий. После этого вы сможете запустить реальное реагирование.",
-									"Create and publish your first playbook. Then start a real incident response.",
+									"Создайте и опубликуйте первый план. После этого вы сможете запустить реальное реагирование.",
+									"Create and publish your first action plan. Then start a real incident response.",
 								)}
 					</p>
 					<button
@@ -778,7 +868,7 @@ function Incidents({
 					>
 						{playbooks.some((p) => p.published)
 							? t("Запустить первый инцидент", "Start your first incident")
-							: t("Перейти к сценариям", "Go to playbooks")}{" "}
+							: t("Перейти к планам действий", "Go to action plans")}{" "}
 						→
 					</button>
 				</div>
@@ -918,8 +1008,15 @@ function CreateIncident({
 							"API возвращает ошибки 500",
 							"API returns 500 errors",
 						)}
+						aria-label={t("Название инцидента", "Incident title")}
 						{...register("title")}
 					/>
+					<small className="muted">
+						{t(
+							"Кратко опишите сбой — так вы найдёте его в истории.",
+							"A short failure description helps you find it in history.",
+						)}
+					</small>
 				</label>
 				<label>
 					{t("Сервис", "Service")}
@@ -927,11 +1024,24 @@ function CreateIncident({
 						required
 						maxLength={100}
 						placeholder="payments-api"
+						aria-label={t("Сервис", "Service")}
 						{...register("service")}
 					/>
+					<small className="muted">
+						{t(
+							"Название сайта или сервиса для группировки. Подключения к нему не создаётся.",
+							"A site or service name for grouping; no connection is created.",
+						)}
+					</small>
 				</label>
 				<label>
 					{t("Приоритет", "Severity")}
+					<small className="muted">
+						{t(
+							"Влияет на условные шаги плана, а не на скорость ремонта.",
+							"Affects conditional steps, not repair speed.",
+						)}
+					</small>
 					<select {...register("severity")}>
 						{["critical", "high", "medium", "low"].map((s) => (
 							<option key={s} value={s}>
@@ -941,7 +1051,13 @@ function CreateIncident({
 					</select>
 				</label>
 				<label>
-					{t("Сценарий реагирования", "Response playbook")}
+					{t("План действий", "Action plan")}
+					<small className="muted">
+						{t(
+							"Используется опубликованная версия. Текущий черновик её не меняет.",
+							"Uses the published version. Draft edits do not change it.",
+						)}
+					</small>
 					<select {...register("playbookId")}>
 						{playbooks
 							.filter((p) => p.published)
@@ -962,12 +1078,12 @@ function CreateIncident({
 				<button className="primary" disabled={submit.isPending} type="submit">
 					{submit.isPending
 						? t("Запускаем…", "Starting…")
-						: t("Создать и запустить", "Create and run")}
+						: t("Создать и запустить", "Create and start")}
 				</button>
 				<span className="muted small">
 					{t(
-						"Шаги выполняются на сервере, даже если закрыть страницу.",
-						"Steps run on the server, even when this page is closed.",
+						"Порядок и история сохраняются на сервере. Задачи выполняет человек. Сон бесплатного сервера может задержать таймер.",
+						"Sequence and history are saved on the server. People perform tasks. A sleeping free server can delay timers.",
 					)}
 				</span>
 			</div>
@@ -1066,8 +1182,12 @@ function RunDetail({
 							{t("Принять в работу", "Acknowledge")}
 						</button>
 					)}
-					<a className="button" href={`/api/runs/${id}/export`}>
-						{t("Экспорт", "Export")} ↗
+					<a
+						data-learn="export"
+						className="button"
+						href={`/api/runs/${id}/export`}
+					>
+						{t("Выгрузить JSON", "Export JSON")} ↗
 					</a>
 				</div>
 			</div>
@@ -1085,7 +1205,7 @@ function RunDetail({
 						<div className="section-heading">
 							<div>
 								<p className="eyebrow">
-									{t("ВЫПОЛНЕНИЕ СЦЕНАРИЯ", "PLAYBOOK EXECUTION")}
+									{t("ВЫПОЛНЕНИЕ ПЛАНА", "PLAN EXECUTION")}
 								</p>
 								<h2>
 									{run.playbookName}{" "}
@@ -1104,7 +1224,7 @@ function RunDetail({
 							<progress
 								max={run.steps.length}
 								value={completed}
-								aria-label={t("Выполнение сценария", "Playbook progress")}
+								aria-label={t("Выполнение плана", "Action plan progress")}
 							/>
 						</div>
 						<ol className="execution-track">
@@ -1140,12 +1260,12 @@ function RunDetail({
 							))}
 						</ol>
 					</div>
-					<div className="panel timeline">
-						<h2>{t("История реагирования", "Response history")}</h2>
+					<div className="panel timeline" data-learn="history" tabIndex={-1}>
+						<h2>{t("История", "Response history")}</h2>
 						<p className="muted small">
 							{t(
-								"Реальные события этого запуска, сохранённые на сервере.",
-								"Actual events from this run, saved on the server.",
+								"События этого выполнения плана, сохранённые на сервере.",
+								"Events from this plan execution, saved on the server.",
 							)}
 						</p>
 						<ol>
@@ -1165,6 +1285,7 @@ function RunDetail({
 					{waiting ? (
 						<form
 							className="decision-panel panel"
+							data-learn={current.type}
 							onSubmit={(e) => {
 								e.preventDefault();
 								action.mutate({
@@ -1182,10 +1303,21 @@ function RunDetail({
 							</p>
 							<h2>
 								{current.type === "approval"
-									? t("Нужно ваше решение", "Your decision is needed")
+									? t("Требуется подтверждение", "Confirmation is required")
 									: t("Выполните задачу", "Complete the task")}
 							</h2>
 							<p>{current.title}</p>
+							<p>
+								{current.type === "approval"
+									? t(
+											"Следующий шаг заблокирован до вашего решения. Подтвердите результат или отклоните выполнение с причиной.",
+											"The next step is blocked until you decide. Confirm the outcome or reject execution with a reason.",
+										)
+									: t(
+											"Сначала выполните действие вне приложения, затем запишите результат. В учебном примере достаточно вымышленной заметки.",
+											"Perform the action outside the app first, then record the result. For a practice example, a fictional note is enough.",
+										)}
+							</p>
 							<label>
 								{t("Результат или обоснование", "Outcome or reason")}
 								<textarea
@@ -1205,7 +1337,7 @@ function RunDetail({
 								disabled={action.isPending || !reason.trim()}
 							>
 								{current.type === "approval"
-									? t("Согласовать и продолжить", "Approve and continue")
+									? t("Подтвердить и продолжить", "Confirm and continue")
 									: t("Подтвердить выполнение", "Confirm completion")}
 							</button>
 							{current.type === "approval" && (
@@ -1232,7 +1364,11 @@ function RunDetail({
 							</p>
 						</form>
 					) : (
-						<div className="panel result-panel">
+						<div
+							className="panel result-panel"
+							data-learn="result"
+							tabIndex={-1}
+						>
 							<span className="decision-icon">
 								{run.status === "completed"
 									? "✓"
@@ -1242,20 +1378,20 @@ function RunDetail({
 							</span>
 							<h2>
 								{run.status === "completed"
-									? t("Сценарий выполнен", "Playbook completed")
+									? t("План выполнен", "Action plan completed")
 									: run.status === "waiting"
-										? t("Идёт наблюдение", "Observation in progress")
+										? t("Ожидание по таймеру", "Observation in progress")
 										: label(run.status, locale)}
 							</h2>
 							<p>
 								{run.status === "completed"
 									? t(
-											"Все подходящие шаги пройдены. История доступна для разбора и экспорта.",
-											"All matching steps have finished. The history is available for review and export.",
+											"Все подходящие шаги пройдены. История и заметки сохранены ниже. Завершение плана само по себе не доказывает, что сайт исправен.",
+											"All matching steps have finished. History and notes are saved below. Completing a plan alone does not prove the website is working.",
 										)
 									: t(
-											"Страница обновляется автоматически. Состояние сохранится после закрытия браузера.",
-											"This page refreshes automatically. State persists when you close your browser.",
+											"Страница обновляется автоматически. Таймер ждёт указанного времени, но не проверяет сайт. После сна сервера продолжение может задержаться; история не теряется.",
+											"This page updates automatically. The timer waits for the configured time but does not check the website. Server sleep can delay continuation; history is retained.",
 										)}
 							</p>
 							{run.status === "completed" &&
@@ -1271,25 +1407,25 @@ function RunDetail({
 						</div>
 					)}
 					<div className="panel run-context">
-						<h2>{t("О запуске", "Run context")}</h2>
+						<h2>{t("О выполнении плана", "Plan execution")}</h2>
 						<dl>
 							<dt>{t("Сервис", "Service")}</dt>
 							<dd>{run.service}</dd>
 							<dt>{t("Последнее событие", "Last update")}</dt>
 							<dd>{date(run.updated, locale)}</dd>
-							<dt>{t("Корреляция", "Correlation")}</dt>
+							<dt>{t("Номер выполнения", "Correlation")}</dt>
 							<dd className="mono">{run.id}</dd>
 						</dl>
 						{run.parentId && (
 							<button onClick={() => navigate("incidents", run.parentId)}>
-								{t("Исходный запуск", "Original run")} ↗
+								{t("Исходное выполнение", "Original execution")} ↗
 							</button>
 						)}
 						{["running", "waiting"].includes(run.status) ? (
 							<button
 								className="danger wide"
 								disabled={action.isPending}
-								onClick={() => {
+								onClick={(event) => {
 									if (
 										window.confirm(
 											t(
@@ -1299,9 +1435,10 @@ function RunDetail({
 										)
 									)
 										action.mutate({ action: "cancel" });
+									else event.currentTarget.focus();
 								}}
 							>
-								{t("Остановить запуск", "Cancel run")}
+								{t("Остановить выполнение", "Stop execution")}
 							</button>
 						) : (
 							<button
@@ -1309,13 +1446,13 @@ function RunDetail({
 								disabled={replay.isPending}
 								onClick={() => replay.mutate()}
 							>
-								{t("Создать повторный запуск", "Create replay attempt")}
+								{t("Выполнить план повторно", "Start the plan again")}
 							</button>
 						)}
 						<p className="small muted">
 							{t(
-								"Повторный запуск создаёт отдельную попытку по актуальной опубликованной версии.",
-								"Replay creates a separate attempt using the latest published version.",
+								"Повторное выполнение создаёт отдельную попытку по актуальной опубликованной версии.",
+								"Starting again creates a separate execution using the latest published version.",
 							)}
 						</p>
 					</div>
@@ -1337,13 +1474,13 @@ function Analytics({ locale, runs }: { locale: Locale; runs: Run[] }) {
 			<div className="section-heading">
 				<div>
 					<p className="eyebrow">
-						{t("УЧИТЕСЬ НА РЕАЛЬНЫХ ЗАПУСКАХ", "LEARN FROM REAL RUNS")}
+						{t("ИТОГИ ВЫПОЛНЕНИЯ ПЛАНОВ", "PLAN EXECUTION RESULTS")}
 					</p>
 					<h1>{t("Аналитика реагирования", "Response analytics")}</h1>
 					<p className="muted">
 						{t(
-							"Метрики вашего пространства за всё время. Только сохранённые инциденты.",
-							"All-time metrics for your workspace. Only persisted incidents.",
+							"Итоги записей вашего пространства за всё время, включая учебные примеры. Это не автоматическая оценка работоспособности сайта.",
+							"All-time results for records in your workspace, including practice examples. These do not automatically assess website health.",
 						)}
 					</p>
 				</div>
@@ -1375,14 +1512,14 @@ function Analytics({ locale, runs }: { locale: Locale; runs: Run[] }) {
 				<div className="empty panel">
 					<h2>
 						{t(
-							"Метрики появятся после первого запуска",
-							"Metrics appear after your first run",
+							"Итоги появятся после первого выполнения плана",
+							"Metrics appear after your first plan execution",
 						)}
 					</h2>
 					<p>
 						{t(
-							"Создайте инцидент и пройдите сценарий. Здесь появятся фактические времена реагирования.",
-							"Create an incident and complete its playbook to see actual response times.",
+							"Создайте инцидент и пройдите план. Здесь появятся фактические времена реагирования.",
+							"Create an incident and complete its action plan to see actual response times.",
 						)}
 					</p>
 				</div>
@@ -1404,7 +1541,7 @@ function Analytics({ locale, runs }: { locale: Locale; runs: Run[] }) {
 						))}
 					</div>
 					<div className="panel">
-						<h2>{t("Результаты сценариев", "Playbook outcomes")}</h2>
+						<h2>{t("Результаты планов действий", "Action plan outcomes")}</h2>
 						{["completed", "waiting", "running", "failed", "cancelled"].map(
 							(s) => (
 								<div className="outcome-row" key={s}>
@@ -1446,7 +1583,7 @@ function Integrations({
 			service: "payments-api",
 			severity: "high",
 			playbookId:
-				playbooks.find((p) => p.published)?.id || "<published-playbook-id>",
+				playbooks.find((p) => p.published)?.id || "<published-plan-id>",
 		},
 		null,
 		2,
@@ -1536,8 +1673,8 @@ function Integrations({
 				</pre>
 				<p className="small muted">
 					{t(
-						"HTTP 202 означает: инцидент сохранён и принят к выполнению. Результат проверяйте в центре реагирования.",
-						"HTTP 202 means the incident was persisted and accepted. Check execution results in the response center.",
+						"HTTP 202 означает: запись о сбое сохранена. Откройте «Инциденты», чтобы пройти план действий.",
+						"HTTP 202 means the incident record is saved. Open Incidents to follow its action plan.",
 					)}
 				</p>
 			</div>

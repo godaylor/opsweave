@@ -76,8 +76,8 @@ export default function Editor({
 			reset(p);
 			setNotice(
 				t(
-					"Сценарий опубликован. Теперь можно запустить инцидент.",
-					"Playbook published. You can now start an incident.",
+					"План опубликован. Теперь можно запустить инцидент.",
+					"Action plan published. You can now start an incident.",
 				),
 			);
 			query.invalidateQueries({ queryKey: ["playbooks"] });
@@ -88,8 +88,8 @@ export default function Editor({
 			{
 				name: t("Восстановление сервиса", "Service recovery"),
 				description: t(
-					"Проверка, согласование, контроль и устранение.",
-					"Investigate, approve, verify and resolve.",
+					"Проверка, подтверждение, контроль и устранение.",
+					"Investigate, confirm, verify and resolve.",
 				),
 				steps: [
 					{
@@ -116,8 +116,8 @@ export default function Editor({
 						id: crypto.randomUUID(),
 						type: "approval",
 						title: t(
-							"Согласовать восстановительные действия",
-							"Approve recovery actions",
+							"Подтвердить восстановительные действия",
+							"Confirm recovery actions",
 						),
 						condition: "always",
 						seconds: 0,
@@ -144,21 +144,21 @@ export default function Editor({
 		<section className="editor">
 			<div className="section-heading">
 				<div>
-					<p className="eyebrow">{t("РЕДАКТОР СЦЕНАРИЯ", "PLAYBOOK EDITOR")}</p>
+					<p className="eyebrow">{t("РЕДАКТОР ПЛАНА", "ACTION PLAN EDITOR")}</p>
 					<h1>
 						{saved
 							? saved.name
-							: t("Как реагировать на сбой?", "How should the team respond?")}
+							: t("Как реагировать на сбой?", "How will you respond?")}
 					</h1>
 					<p className="muted">
 						{t(
-							"Шаги выполняются по порядку. Задачи и согласования ждут вашего решения.",
-							"Steps run in order. Tasks and approvals wait for your decision.",
+							"План идёт по порядку. Человек выполняет задачи и даёт подтверждения; приложение сохраняет результат.",
+							"Steps run in order. Tasks and confirmations wait for your decision.",
 						)}
 					</p>
 				</div>
 				<button
-					onClick={() => {
+					onClick={(event) => {
 						if (
 							!isDirty ||
 							window.confirm(
@@ -169,6 +169,7 @@ export default function Editor({
 							)
 						)
 							close();
+						else event.currentTarget.focus();
 					}}
 				>
 					{t("Закрыть", "Close")}
@@ -217,11 +218,17 @@ export default function Editor({
 					</div>
 				)}
 				{notice && <output className="success">{notice}</output>}
+				<p className="field-help">
+					{t(
+						"Сохранить — обновить личный черновик. Опубликовать — сделать эту версию доступной для новых выполнений только в вашем пространстве, не в общем каталоге.",
+						"Save updates your private draft. Publish makes this version available for new executions in your workspace only, not in a shared catalog.",
+					)}
+				</p>
 				<div className="editor-layout">
 					<div className="steps-editor">
 						<div className="panel form-grid">
 							<label>
-								{t("Название сценария", "Playbook name")}
+								{t("Название плана", "Action plan name")}
 								<input
 									required
 									maxLength={100}
@@ -229,8 +236,15 @@ export default function Editor({
 										"Например, восстановление API",
 										"For example, API recovery",
 									)}
+									aria-label={t("Название плана", "Action plan name")}
 									{...register("name", { required: true })}
 								/>
+								<small className="muted">
+									{t(
+										"По этому названию вы выберете план при создании инцидента.",
+										"Use this name to choose the plan when creating an incident.",
+									)}
+								</small>
 							</label>
 							<label>
 								{t("Когда использовать", "When to use")}
@@ -240,9 +254,25 @@ export default function Editor({
 										"Что произошло и какой результат нужен",
 										"What happened and the expected outcome",
 									)}
+									aria-label={t("Когда использовать", "When to use")}
 									{...register("description")}
 								/>
+								<small className="muted">
+									{t(
+										"Описание помогает выбрать план; оно не меняет порядок шагов.",
+										"The description helps you choose a plan; it does not change the step order.",
+									)}
+								</small>
 							</label>
+						</div>
+						<div className="panel step-help">
+							<h2>{t("Что делает тип шага", "What each step type does")}</h2>
+							<p>
+								{t(
+									"Задача ждёт отметки о выполненном человеком действии. Подтверждение требует решения: продолжить или остановить план. Запись добавляет текст в историю автоматически. Ожидание ставит таймер, не проверяя сайт. Устранение только отмечает инцидент решённым — ремонт выполняется вне приложения.",
+									"A task waits for a person to mark an action done. Confirmation requires a decision to continue or stop. A log entry automatically records text. Wait starts a timer without checking the website. Resolve only marks the incident resolved — repairs happen outside the app.",
+								)}
+							</p>
 						</div>
 						<ol className="step-list">
 							{fields.map((field, index) => (
@@ -315,6 +345,12 @@ export default function Editor({
 										<div className="form-columns">
 											<label>
 												{t("Выполнить при приоритете", "Run for severity")}
+												<small className="muted">
+													{t(
+														"Другой приоритет пропустит этот шаг.",
+														"A different severity skips this step.",
+													)}
+												</small>
 												<select {...register(`steps.${index}.condition`)}>
 													{["always", "critical", "high", "medium", "low"].map(
 														(c) => (
@@ -327,6 +363,12 @@ export default function Editor({
 											</label>
 											<label>
 												{t("Для таймера: секунды", "For timers: seconds")}
+												<small className="muted">
+													{t(
+														"Только для ожидания: 1–86400. У других типов поле не используется.",
+														"Only for Wait: 1–86400. Other step types ignore this field.",
+													)}
+												</small>
 												<input
 													type="number"
 													min={0}
@@ -365,16 +407,16 @@ export default function Editor({
 						<h2>{t("От сигнала к результату", "From signal to outcome")}</h2>
 						<p>
 							{t(
-								"Запуск использует опубликованную версию. Изменение черновика не затронет текущие инциденты.",
-								"Runs use the published version. Draft changes do not affect current incidents.",
+								"Выполнение плана использует опубликованную версию. Изменение черновика не затронет текущие инциденты.",
+								"Plan executions use the published version. Draft changes do not affect current incidents.",
 							)}
 						</p>
 						<div className="guide-line">
 							<b>1</b>
 							<span>
 								{t(
-									"Сохраните и опубликуйте сценарий",
-									"Save and publish the playbook",
+									"Сохраните и опубликуйте план",
+									"Save and publish the action plan",
 								)}
 							</span>
 						</div>
@@ -382,8 +424,8 @@ export default function Editor({
 							<b>2</b>
 							<span>
 								{t(
-									"Создайте инцидент и выберите сценарий",
-									"Create an incident and choose the playbook",
+									"Создайте инцидент и выберите план",
+									"Create an incident and choose the action plan",
 								)}
 							</span>
 						</div>

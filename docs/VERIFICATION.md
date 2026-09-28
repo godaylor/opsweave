@@ -1,4 +1,31 @@
-# OpsWeave standalone verification — 2026-09-18
+# OpsWeave standalone verification — 2026-09-28
+
+## V3 — guided action plans, 2026-09-28
+
+Scope: the existing standalone product only. The user authorized the V3 assignment and publication to the existing free Render target. No backend/API contract, dependency, database schema, secret, permission or hosting-plan change. Initial project and publishing checkouts were clean; the public base was c8d426e. Legacy CE milestones below are historical evidence, not this release.
+
+- The RU/EN welcome page explains IT failure instructions using a fictional checkout incident, human responsibility, and the distinction from RelayOps. Forms explain field effects and tasks versus blocking confirmations. Personal accounts, isolated guests, the seven-day guest cookie, registration to retain access, unavailable email password recovery and free-server wake delays are explicit.
+- “Как пользоваться” / “How to use” opens an inline guide with real-control focus, Next/Back/Skip/Finish, Escape and focus return. Dismissal survives refresh and the guide can be restarted. It does not cover controls or execute steps. Explicit practice buttons create a private practice copy using the existing API; normal plans are untouched.
+- The practice path persists plan/execution references, uses the existing atomic idempotency key, and exercises task + note → required confirmation → five-second timer → completion → history → JSON. Refresh, navigation back/forward, missing guide targets and rejected attempts to bypass confirmation are covered.
+
+### Local checks
+
+- TypeScript, Biome (16 files), Vite production build and 13 PostgreSQL runtime/security/restart tests PASS.
+- Chromium: all five product scenarios PASS; the separate axe/touch scenario PASS after correcting its test harness. WebKit: all six scenarios PASS, retries=0 (56.8s). Firefox: all six scenarios PASS, retries=0 (55.8s).
+- Responsive assertions cover RU/EN welcome, guidance, editor, incident creation/execution, lists and remaining navigation at 320/360/390/430/539/540/541/768/849/850/851/1024/1149/1150/1151/1280/1440/1920/2560/3840/5120/7680 CSS px; empty/one/two/eight plans, long unbroken names, injected API 503 with preserved draft, reduced motion, touch, keyboard, Escape and focus return. CSS 200% zoom and a 320×240 viewport representing 400% reflow are checked.
+- Axe 4.13.0 (already installed, no dependency added): zero WCAG 2 A/AA, 2.1 AA, 2.2 AA tagged violations on welcome + intro guide, authenticated guide and editor, each at 320 and 1440 px, in Chromium, Firefox and WebKit. This is an automated check, not WCAG certification.
+- Browser tests use one worker, engines sequentially, separate per-run schemas in the existing expendable opsweave_test Postgres. Independent guest/account contexts confirm cross-owner read/export/write refusal. No user database/storage was cleared. Only the project-owned test container was started; no neighboring project or browser tab was altered.
+- Bundle: initial JS 68.98 KB gzip; product 29.58 KB; lazy guide/practice 3.90 KB; editor 4.13 KB; CSS 5.58 KB (rounded; final build output is authoritative). No field INP or real-device claim.
+
+### Failures and fixes retained
+
+The first guide selector included a decorative arrow; an explicit accessible label corrected it. A screenshot matrix initially began before the welcome heading was ready; the test now waits for actual content. Existing globally cached Firefox/WebKit versions did not match this project's Playwright; exact browser builds were installed only in an ignored project directory, with global browser garbage collection disabled. Wrong-cwd export and npm argument-forwarding failures were not counted as verification. One attempted local browser start refused the occupied OpsWeave test port while the preceding owned test was finishing; no process was killed or reused.
+
+WebKit exposed actual horizontal overflow from a long native select option at 320 px. Minimum widths alone did not fix it; measured element/scroll bounds isolated the option. Paint containment on the select fixes its native overflow without masking page overflow. WebKit also exposed missing focus after dismissing a native confirmation; both stop and unsaved-editor handlers explicitly restore focus on cancellation. Regression assertions remain strict. The first axe injection was correctly blocked by production CSP; the test now serves the existing axe file through a test-only same-origin intercepted request. CSP was not relaxed.
+
+### Publication and limits
+
+V3 publication is pending at this checkpoint; the previously released site remains live. PR/CI/deploy and public workflow results will be recorded here after publication. No paid resource is authorized or required. Real iPhone Safari, physical TV/8K hardware, assistive-technology user testing, field performance and a usability study with new users have not been performed. WebKit and extreme widths are browser emulation. Existing free-host delays/quotas and historical unfixed OS advisories remain as documented below.
 
 ## Public release — 2026-09-18
 

@@ -71,6 +71,8 @@ input,
 textarea,
 select {
 	width: 100%;
+	min-width: 0;
+	max-width: 100%;
 	min-height: 44px;
 	border: 1px solid #cfd4e1;
 	border-radius: 7px;
@@ -82,8 +84,13 @@ textarea {
 	resize: vertical;
 	min-height: 90px;
 }
+select {
+	/* WebKit otherwise includes a long native option in page scroll bounds. */
+	contain: paint;
+}
 label {
 	display: grid;
+	min-width: 0;
 	gap: 7px;
 	font-weight: 600;
 	font-size: 13px;
@@ -584,7 +591,7 @@ small,
 }
 .incident-list {
 	padding: 0;
-	overflow: hidden;
+	overflow: visible;
 }
 .list-toolbar {
 	display: flex;
@@ -1512,5 +1519,138 @@ dd {
 @media (prefers-reduced-motion: reduce) {
 	.loading-grid > div {
 		animation: none;
+	}
+}
+
+/* Guidance stays in document flow: it never covers a task or traps keyboard focus. */
+.walkthrough {
+	margin: 24px 0;
+	border-left: 4px solid var(--purple);
+	max-width: 900px;
+}
+.walkthrough > p {
+	max-width: 70ch;
+	margin: 12px 0;
+}
+.walkthrough > button {
+	margin-bottom: 14px;
+}
+.welcome-guide {
+	max-width: 1190px;
+	margin: auto;
+	padding: 0 24px;
+}
+.training-explanation {
+	margin-bottom: 12px;
+	max-width: 75ch;
+}
+.training-page > .small {
+	max-width: 90ch;
+}
+.training-preview {
+	margin: 24px 0;
+}
+.training-preview li {
+	padding: 8px 0;
+	max-width: 75ch;
+}
+.step-help {
+	margin-top: 18px;
+}
+.step-help p,
+.field-help {
+	max-width: 80ch;
+	line-height: 1.7;
+	margin: 12px 0 20px;
+}
+.hosting-note {
+	max-width: 70ch;
+	margin: 24px auto;
+	padding: 0 24px;
+	color: var(--muted);
+	font-size: 12px;
+	text-align: center;
+}
+.workspace-main main {
+	max-width: 1500px;
+	margin-inline: auto;
+}
+.auth-page > header {
+	max-width: 1600px;
+	margin: auto;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+h1,
+h2,
+h3,
+button,
+.button {
+	overflow-wrap: anywhere;
+}
+.workspace-main,
+.training-page,
+.panel,
+.run-layout > *,
+.execution-track li > div {
+	min-width: 0;
+}
+.auth-story h1 {
+	font-size: clamp(30px, 3.2vw, 48px);
+	letter-spacing: -1.2px;
+}
+.mini-track {
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.run-context,
+.guide {
+	display: block;
+}
+@media (max-width: 850px) {
+	.sidebar nav {
+		flex-wrap: wrap;
+		overflow: visible;
+	}
+	.sidebar nav a {
+		white-space: normal;
+	}
+	.topbar {
+		height: auto;
+		min-height: 48px;
+		flex-wrap: wrap;
+		gap: 8px;
+		padding-block: 8px;
+	}
+}
+@media (max-width: 540px) {
+	.guest-banner {
+		flex-wrap: wrap;
+	}
+	.incident-name {
+		min-width: 0;
+		flex-basis: 75%;
+	}
+	.incident-row > .row-state {
+		flex-wrap: wrap;
+	}
+	.row-state small {
+		white-space: normal;
+		overflow: visible;
+	}
+	.auth-layout {
+		padding-inline: 16px;
+	}
+	.auth-panel {
+		padding: 18px;
+	}
+	.auth-story h1 {
+		font-size: 32px;
+	}
+	.auth-page > header {
+		padding: 16px;
+	}
+	.metrics {
+		grid-template-columns: 1fr;
 	}
 }

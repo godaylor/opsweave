@@ -75,9 +75,17 @@ export async function api<T>(
 	return result;
 }
 const errors: Record<string, [string, string]> = {
+	training_unavailable: [
+		"Учебный план недоступен в этом пространстве. Откройте список планов; ваши записи не удалены.",
+		"This practice plan is unavailable in this workspace. Open the plans list; your records were not deleted.",
+	],
+	not_found: [
+		"Запись не найдена или недоступна в вашем пространстве.",
+		"This record was not found or is not available in your workspace.",
+	],
 	resolve_must_be_last: [
-		"Переместите устранение инцидента в конец сценария.",
-		"Move the resolve step to the end of the playbook.",
+		"Переместите устранение инцидента в конец плана.",
+		"Move the resolve step to the end of the action plan.",
 	],
 	invalid_wait: [
 		"Для таймера укажите от 1 до 86400 секунд.",
@@ -100,12 +108,12 @@ const errors: Record<string, [string, string]> = {
 		"Use at least 12 characters for your password.",
 	],
 	revision_conflict: [
-		"Сценарий изменён в другом окне. Скопируйте свой текст и загрузите актуальную версию.",
-		"This playbook changed in another window. Copy your edits and reload the latest version.",
+		"План изменён в другом окне. Скопируйте свой текст и загрузите актуальную версию.",
+		"This action plan changed in another window. Copy your edits and reload the latest version.",
 	],
 	published_playbook_required: [
-		"Сначала опубликуйте сценарий.",
-		"Publish the playbook first.",
+		"Сначала опубликуйте план.",
+		"Publish the action plan first.",
 	],
 	invalid_transition: [
 		"Состояние уже изменилось. Обновите данные и повторите.",
@@ -120,8 +128,8 @@ const errors: Record<string, [string, string]> = {
 		"Too many requests. Try again in a minute.",
 	],
 	active_run_limit: [
-		"Достигнут лимит 30 активных запусков. Завершите один из них.",
-		"The limit of 30 active runs has been reached. Complete one first.",
+		"Достигнут лимит 30 активных выполнений планов. Завершите один из них.",
+		"The limit of 30 active plan executions has been reached. Complete one first.",
 	],
 	invalid_input: [
 		"Проверьте заполнение и длину полей.",
@@ -155,25 +163,28 @@ export const labels: Record<string, [string, string]> = {
 	medium: ["Средний", "Medium"],
 	low: ["Низкий", "Low"],
 	always: ["Всегда", "Always"],
-	note: ["Запись в журнал", "Log entry"],
-	task: ["Задача исполнителю", "Responder task"],
-	approval: ["Согласование", "Approval"],
+	note: ["Запись в историю", "Log entry"],
+	task: ["Задача", "Task"],
+	approval: ["Подтверждение", "Confirmation"],
 	wait: ["Ожидание", "Wait"],
 	resolve: ["Устранение инцидента", "Resolve incident"],
 	"incident.created": ["Инцидент создан", "Incident created"],
-	"run.completed": ["Сценарий выполнен", "Run completed"],
-	"run.replayed": ["Повторный запуск", "New replay attempt"],
+	"run.completed": ["План выполнен", "Plan completed"],
+	"run.replayed": ["Повторное выполнение", "New plan execution"],
 	"step.skipped": ["Шаг пропущен по условию", "Step skipped by condition"],
 	"step.task_requested": ["Требуется действие", "Action requested"],
-	"step.approval_requested": ["Запрошено согласование", "Approval requested"],
+	"step.approval_requested": [
+		"Запрошено подтверждение",
+		"Confirmation requested",
+	],
 	"step.timer_started": ["Таймер запущен", "Timer started"],
 	"note.recorded": ["Запись добавлена", "Note recorded"],
 	"incident.resolved": ["Инцидент устранён", "Incident resolved"],
 	"step.completed": ["Шаг завершён", "Step completed"],
-	"action.approve": ["Согласовано", "Approved"],
-	"action.reject": ["Отказ в согласовании", "Approval rejected"],
+	"action.approve": ["Подтверждено", "Confirmed"],
+	"action.reject": ["Подтверждение отклонено", "Confirmation rejected"],
 	"action.complete": ["Задача выполнена", "Task completed"],
-	"action.cancel": ["Запуск остановлен", "Run cancelled"],
+	"action.cancel": ["Выполнение остановлено", "Plan execution stopped"],
 	"action.acknowledge": ["Принят в работу", "Acknowledged"],
 	"action.resolve": ["Инцидент устранён", "Incident resolved"],
 };
