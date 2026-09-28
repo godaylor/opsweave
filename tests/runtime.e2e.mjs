@@ -111,6 +111,8 @@ test('practice guide: real controls, blocking confirmation, refresh, history and
   await expect(page.getByRole('heading', { name: 'Каждому инциденту — следующий шаг' })).toBeVisible();
   await page.getByRole('link', { name: /Как пользоваться/ }).click();
   await page.reload();
+  // The guide can render before its server-backed execution after a cold/remote load.
+  await expect(page.getByRole('heading', { name: 'План выполнен', exact: true })).toBeVisible();
   run = await (await page.request.get(exportHref)).json();
   expect(run.status).toBe('completed');
   expect(run.events.filter(e => e.type === 'action.approve')).toHaveLength(1);

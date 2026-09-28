@@ -6,7 +6,7 @@
 
 Это рабочее приложение с сервером и базой данных. Гостевой вход создаёт отдельное личное пространство, без общих демонстрационных данных. Аккаунт сохраняет доступ между устройствами. RU включён по умолчанию; EN переключается в интерфейсе.
 
-**Live app: [opsweave.onrender.com](https://opsweave.onrender.com)** — Render Free without a disk + Neon Free PostgreSQL (Frankfurt). Full public desktop/mobile workflow verified on 2026-09-18. The first request after inactivity can take 50 seconds or more.
+**Live app: [opsweave.onrender.com](https://opsweave.onrender.com)** — Render Free without a disk + Neon Free PostgreSQL (Frankfurt). Guided practice and desktop/mobile workflows verified publicly on 2026-09-28. The first request after inactivity can take 50 seconds or more.
 
 ![Incident response with a real action](screenshots/03-incident-action.png)
 
