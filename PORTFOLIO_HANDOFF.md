@@ -58,19 +58,6 @@ Original standalone code is MIT. The export contains no Novu runtime/UI/framewor
 
 The complete scenario → incident → task → approval → timer → completion → reload/history/export workflow passes against the public HTTPS app. Desktop and mobile Playwright: 2/2, retries=0. Neon retained completed runs across Render redeploys. PR #1 is merged into main; CI is green. Frontend and backend run together on Render Free, with DATABASE_URL stored privately and no persistent disk. Free-host sleep can delay first requests and timer execution; this is a public personal-workspace product, not an always-on paging SLA.
 
-## Readiness assessment
+## September 2026 usability update
 
-These are engineering estimates for the current state, not measured reliability percentages. All categories have equal weight.
-
-| Category | Ready | Finished and checked | Remaining |
-|---|---:|---|---|
-| Concept and purpose | 95% | Clear incident-to-outcome workflow | Real responder feedback |
-| UX/UI | 90% | RU/EN, public desktop/mobile, local axe checks | Broader manual accessibility validation |
-| Core functionality | 90% | Full public workflow, history/export, local replay and conditions | Optional external delivery/team collaboration |
-| Testing/security/quality | 85% | 13 server tests, public E2E, CI, full offline image scan | Unfixed OS advisories and production load evidence |
-| Backend/database/auth | 90% | Neon, isolated accounts, sessions, scoped keys, restart persistence | Email recovery and long-term operations |
-| Public production deploy | 95% | Render Free + Neon Free, HTTPS, full public test | Free-tier sleep and quota limitations |
-| GitHub/docs/licensing | 95% | Merged main, green CI, notices, SBOM, release evidence | Future dependency/security maintenance |
-| Personal Portfolio readiness | 95% | Working Live URL, verified screenshots and accurate scope | Real-world feedback |
-
-**Overall: (95 + 90 + 90 + 85 + 90 + 95 + 95 + 95) / 8 = 91.875%, rounded to 92%.**
+The app explains a concrete IT-service failure, uses action plans / plan execution / confirmation / history consistently, and provides an isolated practice copy through the existing API. A restartable inline guide uses real controls without covering them or bypassing mandatory decisions. No team roles, invitation flow or automatic repairs are claimed. Current evidence is recorded in docs/VERIFICATION.md. Historical subjective readiness percentages have been removed.
