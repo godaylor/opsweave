@@ -30,13 +30,14 @@ describe("Original standalone runtime (isolated Postgres, no CE services)", () =
 		!["127.0.0.1", "localhost"].includes(new URL(database).hostname)
 	)
 		throw new Error("Tests require an isolated local opsweave_test database");
-	async function start() {
+	async function start(options = {}) {
 		for (let port = 32340; port <= 32359; port++) {
 			const candidate = await createApp({
 				database,
 				schema,
 				origin: `http://127.0.0.1:${port}`,
 				startWorker: false,
+				...options,
 			});
 			try {
 				await new Promise((resolve, reject) => {
@@ -111,6 +112,117 @@ describe("Original standalone runtime (isolated Postgres, no CE services)", () =
 			key,
 		);
 	}
+	it("reuses an existing guest workspace on repeated entry without changing its cookie", async () => {
+		const g = await guest();
+		const p = await publish(g.cookie);
+		const again = await request("/auth/guest", "POST", {}, g.cookie);
+		assert.equal(again.status, 200);
+		assert.equal(again.data.id, g.data.id);
+		assert.equal(again.cookie, undefined);
+		const plans = await request("/playbooks", "GET", undefined, g.cookie);
+		assert.equal(plans.data[0].id, p.id);
+		const other = await guest();
+		assert.notEqual(other.data.id, g.data.id);
+		assert.deepEqual(
+			(await request("/playbooks", "GET", undefined, other.cookie)).data,
+			[],
+		);
+	});
+	it("accepts same-host loopback guest entry and retains that visitor's saved workspace", async () => {
+		const alias = base.replace("127.0.0.1", "localhost");
+		async function atAlias(cookie) {
+			const result = await fetch(`${alias}/api/auth/guest`, {
+				method: "POST",
+				headers: {
+					Origin: alias,
+					"Sec-Fetch-Site": "same-origin",
+					"Content-Type": "application/json",
+					...(cookie ? { Cookie: cookie } : {}),
+				},
+				body: "{}",
+			});
+			return {
+				status: result.status,
+				data: await result.json(),
+				cookie: result.headers.get("set-cookie")?.split(";")[0],
+			};
+		}
+		const local = await atAlias();
+		assert.equal(local.status, 201);
+		assert.ok(local.cookie);
+		const p = await publish(local.cookie);
+		const resumed = await atAlias(local.cookie);
+		assert.equal(resumed.status, 200);
+		assert.equal(resumed.data.id, local.data.id);
+		assert.equal(resumed.cookie, undefined);
+		const listing = await fetch(`${alias}/api/playbooks`, {
+			headers: { Cookie: local.cookie },
+		});
+		assert.equal(listing.status, 200);
+		assert.equal((await listing.json())[0].id, p.id);
+		const independent = await guest();
+		assert.notEqual(independent.data.id, local.data.id);
+		assert.deepEqual(
+			(await request("/playbooks", "GET", undefined, independent.cookie)).data,
+			[],
+		);
+	});
+	it("rejects foreign, cross-site, mismatched-host and wrong-port origins for local previews", async () => {
+		const local = new URL(base);
+		const alias = `http://localhost:${local.port}`;
+		for (const headers of [
+			{ Origin: "https://attacker.example" },
+			{ Origin: "null" },
+			{ Origin: `${alias}/` },
+			{ Origin: alias },
+			{ Origin: alias, Host: `attacker.example:${local.port}` },
+			{
+				Origin: `http://localhost:${Number(local.port) + 1}`,
+				Host: `localhost:${Number(local.port) + 1}`,
+			},
+			{
+				Origin: `https://localhost:${local.port}`,
+				Host: `localhost:${local.port}`,
+			},
+			{
+				Origin: alias,
+				Host: `localhost:${local.port}`,
+				"Sec-Fetch-Site": "cross-site",
+			},
+		]) {
+			const result = await request(
+				"/auth/guest", "POST", {}, undefined, undefined, headers,
+			);
+			assert.equal(result.status, 403);
+			assert.equal(result.data.error, "origin_denied");
+			assert.equal(result.cookie, undefined);
+		}
+		assert.equal((await guest()).status, 201);
+	});
+	it("keeps HTTPS deployment origins exact and issues secure session cookies", async () => {
+		await app.close();
+		const deployedOrigin = "https://opsweave.example.test";
+		await start({ origin: deployedOrigin, secure: true });
+		const canonical = await request(
+			"/auth/guest", "POST", {}, undefined, undefined,
+			{ Origin: deployedOrigin },
+		);
+		assert.equal(canonical.status, 201);
+		assert.match(canonical.headers.get("set-cookie"), /; Secure(?:;|$)/);
+		for (const headers of [
+			{ Origin: base },
+			{ Origin: `http://localhost:${new URL(base).port}`, Host: `localhost:${new URL(base).port}` },
+			{ Origin: "https://other.example.test" },
+			{ Origin: deployedOrigin, "Sec-Fetch-Site": "cross-site" },
+		]) {
+			const result = await request(
+				"/auth/guest", "POST", {}, undefined, undefined, headers,
+			);
+			assert.equal(result.status, 403);
+			assert.equal(result.data.error, "origin_denied");
+		}
+	});
+
 	it("runs a real task → approval → timer → resolution flow with durable events", async () => {
 		const g = await guest();
 		const p = await publish(g.cookie);
