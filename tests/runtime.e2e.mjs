@@ -418,3 +418,35 @@ test('theme switch: both themes persist after reload and keep the workspace acce
   await page.screenshot({ path: 'screenshots/theme-dark-workspace.png', fullPage: false, animations: 'disabled' });
   expect(errors).toEqual([]);
 });
+
+test('published instruction launches while the background list refresh is delayed', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Попробовать без регистрации', exact: true }).click();
+  await page.getByRole('button', { name: /Открыть готовую инструкцию/ }).click();
+  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await expect(page.getByText('Черновик сохранён', { exact: true })).toBeVisible();
+  const playbookId = new URL(page.url()).searchParams.get('id');
+  let releaseRefresh;
+  const refreshGate = new Promise(resolve => { releaseRefresh = resolve; });
+  await page.route('**/api/playbooks', async route => {
+    if (route.request().method() !== 'GET') return route.continue();
+    const response = await route.fetch();
+    await refreshGate;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.getByRole('button', { name: 'Опубликовать', exact: true }).click();
+    await expect(page.getByText('Инструкция готова к запуску.', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /Запустить инструкцию/ }).click();
+    const selection = page.locator('select[name="playbookId"]');
+    await expect(selection).toHaveValue(playbookId);
+    await page.getByLabel('Название инцидента', { exact: true }).fill('Запуск сразу после публикации');
+    await page.getByLabel('Сервис', { exact: true }).fill('publish-race-regression');
+    const accepted = page.waitForResponse(response => new URL(response.url()).pathname === '/api/runs' && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Создать и запустить', exact: true }).click();
+    const response = await accepted;
+    expect(response.status()).toBe(202);
+    expect(response.request().postDataJSON().playbookId).toBe(playbookId);
+  } finally { releaseRefresh(); }
+  await expect(page.getByRole('heading', { name: 'Текущий шаг', exact: true })).toBeVisible();
+});
