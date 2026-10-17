@@ -60,6 +60,32 @@ export async function createApp({
 	const store = new Store(database, schema);
 	await store.initialize();
 	const limits = new Map();
+	const configuredOrigin = new URL(origin);
+	const loopbackHosts = new Set(["127.0.0.1", "localhost", "[::1]"]);
+	const localHttp =
+		!secure &&
+		configuredOrigin.protocol === "http:" &&
+		loopbackHosts.has(configuredOrigin.hostname);
+	function allowedRequestOrigin(req) {
+		const supplied = req.headers.origin;
+		if (!supplied || supplied === origin) return true;
+		if (!localHttp) return false;
+		try {
+			const candidate = new URL(supplied);
+			// A local preview may be opened as localhost or a loopback address.
+			// Keep browser writes same-origin, on the configured port, instead of
+			// treating an alternate local hostname as a different deployed site.
+			return (
+				candidate.origin === supplied &&
+				candidate.protocol === "http:" &&
+				candidate.port === configuredOrigin.port &&
+				loopbackHosts.has(candidate.hostname) &&
+				req.headers.host?.toLowerCase() === candidate.host
+			);
+		} catch {
+			return false;
+		}
+	}
 	let workerHealthy = true;
 	let ticking = false;
 	let nextTick = 0;
@@ -127,7 +153,7 @@ export async function createApp({
 		try {
 			const url = new URL(req.url, origin);
 			const path = url.pathname;
-			if (path.startsWith('/api/') && path !== '/api/health') nextTick = 0;
+			if (path.startsWith("/api/") && path !== "/api/health") nextTick = 0;
 			if (path === "/api/health" && req.method === "GET") {
 				await store.db.prepare("SELECT 1").get();
 				return send(workerHealthy ? 200 : 503, {
@@ -178,7 +204,7 @@ export async function createApp({
 			if (!["GET", "POST", "PUT"].includes(req.method))
 				throw new Problem(405, "method_not_allowed");
 			if (req.method !== "GET") {
-				if (req.headers.origin && req.headers.origin !== origin)
+				if (!allowedRequestOrigin(req))
 					throw new Problem(403, "origin_denied");
 				if (req.headers["sec-fetch-site"] === "cross-site")
 					throw new Problem(403, "origin_denied");
@@ -197,6 +223,13 @@ export async function createApp({
 			}
 			if (path === "/api/auth/guest" && req.method === "POST") {
 				await body(req);
+				// Repeated entry in this browser must keep the existing workspace.
+				// Only an absent, expired or revoked session may create a new visitor.
+				try {
+					return send(200, await identity(req));
+				} catch (error) {
+					if (!(error instanceof Problem) || error.status !== 401) throw error;
+				}
 				const id = randomUUID();
 				await store.db
 					.prepare(

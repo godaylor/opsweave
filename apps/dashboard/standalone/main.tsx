@@ -16,7 +16,7 @@ createRoot(root).render(
 			<Suspense
 				fallback={
 					<main className="initial-loading" aria-busy="true">
-						OpsWeave…
+						Дежурно…
 					</main>
 				}
 			>

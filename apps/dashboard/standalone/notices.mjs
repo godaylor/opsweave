@@ -56,6 +56,19 @@ export function notices() {
 					});
 				}
 			}
+			const fontNotice = readFileSync(
+				new URL("./public/fonts/Onest-OFL.txt", import.meta.url),
+				"utf8",
+			);
+			if (!fontNotice.includes("SIL OPEN FONT LICENSE Version 1.1"))
+				throw new Error("Missing reviewed Onest font license");
+			packages.set("Onest", {
+				name: "Onest",
+				license: "OFL-1.1",
+				downloadLocation: "https://github.com/googlefonts/onest",
+				copyrightText: fontNotice.split(/\r?\n/)[0],
+				notice: fontNotice,
+			});
 			const list = [...packages.values()].sort((a, b) =>
 				a.name.localeCompare(b.name),
 			);
@@ -63,18 +76,23 @@ export function notices() {
 				type: "asset",
 				fileName: "THIRD-PARTY-NOTICES.txt",
 				source: list
-					.map((p) => `${p.name}@${p.version}\n${"=".repeat(60)}\n${p.notice}`)
+					.map(
+						(p) =>
+							`${p.name}${p.version ? `@${p.version}` : ""}\n${"=".repeat(60)}\n${p.notice}`,
+					)
 					.join("\n\n"),
 			});
 			const ids = list.map((p, index) => ({
 				SPDXID: `SPDXRef-Package-${index}`,
 				name: p.name,
-				versionInfo: p.version,
+				...(p.version ? { versionInfo: p.version } : {}),
 				filesAnalyzed: false,
-				downloadLocation: `https://www.npmjs.com/package/${p.name}/v/${p.version}`,
+				downloadLocation:
+					p.downloadLocation ||
+					`https://www.npmjs.com/package/${p.name}/v/${p.version}`,
 				licenseDeclared: p.license,
 				licenseConcluded: "NOASSERTION",
-				copyrightText: "NOASSERTION",
+				copyrightText: p.copyrightText || "NOASSERTION",
 			}));
 			this.emitFile({
 				type: "asset",
@@ -84,11 +102,11 @@ export function notices() {
 						spdxVersion: "SPDX-2.3",
 						dataLicense: "CC0-1.0",
 						SPDXID: "SPDXRef-DOCUMENT",
-						name: "OpsWeave browser runtime",
+						name: "Дежурно browser runtime",
 						documentNamespace: `https://github.com/godaylor/opsweave/sbom/${randomUUID()}`,
 						creationInfo: {
 							created: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
-							creators: ["Tool: OpsWeave-notice-generator"],
+							creators: ["Tool: Dezhurno-notice-generator"],
 						},
 						packages: ids,
 						relationships: ids.map((p) => ({

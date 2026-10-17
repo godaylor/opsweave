@@ -70,11 +70,21 @@ export async function api<T>(
 	} catch {
 		throw new ApiError(0, "network_error");
 	}
-	const result = await response.json();
-	if (!response.ok) throw new ApiError(response.status, result.error);
+	let result: T & { error?: string };
+	try {
+		result = await response.json();
+	} catch {
+		throw new ApiError(response.status, "service_unavailable");
+	}
+	if (!response.ok)
+		throw new ApiError(response.status, result.error || "service_unavailable");
 	return result;
 }
 const errors: Record<string, [string, string]> = {
+	service_unavailable: [
+		"Сервис временно недоступен. Ваши записи сохранены. Повторите действие.",
+		"The service is temporarily unavailable. Your records are safe. Try again.",
+	],
 	training_unavailable: [
 		"Учебный план недоступен в этом пространстве. Откройте список планов; ваши записи не удалены.",
 		"This practice plan is unavailable in this workspace. Open the plans list; your records were not deleted.",
@@ -92,8 +102,8 @@ const errors: Record<string, [string, string]> = {
 		"Timers must be between 1 and 86400 seconds.",
 	],
 	network_error: [
-		"Нет соединения. Изменения не отправлены. Проверьте сеть и повторите.",
-		"No connection. Changes were not sent. Check your network and retry.",
+		"Связь прервана. Проверьте состояние и повторите действие.",
+		"Connection interrupted. Check the current state and try again.",
 	],
 	invalid_credentials: [
 		"Неверная почта или пароль.",
