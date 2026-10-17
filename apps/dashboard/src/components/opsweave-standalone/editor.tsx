@@ -140,6 +140,10 @@ export default function Editor({
 			setSaved(p);
 			reset(p);
 			setNotice(t("Инструкция готова к запуску.", "Instruction ready to run."));
+			// The acknowledged version must be available before the launch form opens.
+			query.setQueryData<Playbook[]>(["playbooks"], (items) =>
+				items ? items.map((item) => (item.id === p.id ? p : item)) : [p],
+			);
 			query.invalidateQueries({ queryKey: ["playbooks"] });
 		},
 	});

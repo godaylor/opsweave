@@ -1424,16 +1424,25 @@ function CreateIncident({
 	initialPlaybookId?: string;
 }) {
 	const t = (ru: string, en: string) => (locale === "ru" ? ru : en);
-	const { register, handleSubmit } = useForm({
+	const { register, handleSubmit, getValues, setValue } = useForm({
 		defaultValues: {
 			title: "",
 			service: "",
 			severity: "high",
 			playbookId:
 				playbooks.find((p) => p.id === initialPlaybookId && p.published)?.id ||
-				playbooks.find((p) => p.published)?.id,
+				playbooks.find((p) => p.published)?.id ||
+				"",
 		},
 	});
+	useEffect(() => {
+		const selected = getValues("playbookId");
+		if (playbooks.some((p) => p.id === selected && p.published)) return;
+		const ready =
+			playbooks.find((p) => p.id === initialPlaybookId && p.published) ||
+			playbooks.find((p) => p.published);
+		if (ready) setValue("playbookId", ready.id);
+	}, [playbooks, initialPlaybookId, getValues, setValue]);
 	const key = useRef(crypto.randomUUID());
 	const submit = useMutation({
 		mutationFn: (input: unknown) =>
@@ -1512,7 +1521,10 @@ function CreateIncident({
 							"Uses the published version. Draft edits do not change it.",
 						)}
 					</small>
-					<select {...register("playbookId")}>
+					<select required {...register("playbookId", { required: true })}>
+						<option value="" disabled>
+							{t("Выберите инструкцию", "Choose an instruction")}
+						</option>
 						{playbooks
 							.filter((p) => p.published)
 							.map((p) => (
