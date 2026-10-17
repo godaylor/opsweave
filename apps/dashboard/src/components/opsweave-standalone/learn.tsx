@@ -195,7 +195,7 @@ export default function Learn({
 		{
 			title: t("4. Дайте подтверждение", "4. Give confirmation"),
 			text: t(
-				"Запишите основание решения и нажмите «Подтвердить и продолжить». Без этого следующий шаг заблокирован. «Отклонить» останавливает выполнение.",
+				"Запишите основание решения и нажмите «Подтвердить решение». Без этого следующий шаг заблокирован. «Отклонить» останавливает выполнение.",
 				"Record your reason and choose Confirm and continue. The next step stays blocked until then. Reject stops execution.",
 			),
 			target: "[data-learn='approval'] textarea",

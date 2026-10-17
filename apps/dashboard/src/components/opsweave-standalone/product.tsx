@@ -14,20 +14,126 @@ import {
 const Editor = lazy(() => import("./editor"));
 const Learn = lazy(() => import("./learn"));
 import { Guide } from "./guide";
+
+const brandSymbol = (
+	<svg aria-hidden="true" viewBox="0 0 32 32" fill="none">
+		<path
+			d="M7 23V11a4 4 0 0 1 4-4h14M7 23h12a6 6 0 0 0 6-6V7"
+			stroke="currentColor"
+			strokeWidth="3"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		/>
+		<path
+			d="m12 18 5-5m-5 0h5v5"
+			stroke="currentColor"
+			strokeWidth="2.5"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		/>
+		<circle cx="7" cy="25" r="2" fill="currentColor" />
+	</svg>
+);
+const navPaths: Record<string, string> = {
+	incidents: "M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z",
+	playbooks:
+		"M6 3h12a2 2 0 0 1 2 2v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm1 14h13M8 7h8M8 11h6",
+	history: "M3 12a9 9 0 1 0 2.5-6.2L3 8m0-5v5h5m4-1v6l4 2",
+	analytics: "M4 20V10m8 10V4m8 16v-7M2 21h20",
+	integrations:
+		"m8 8 8 8m-9-5-3 3a4 4 0 0 0 6 6l3-3m-2-10 3-3a4 4 0 0 1 6 6l-3 3",
+	learn:
+		"M9 8a3 3 0 1 1 5 2c-1 1-2 1-2 4m0 3h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+	account: "M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-12 13v-2a8 8 0 0 1 16 0v2",
+};
+const routeArt = (
+	<div className="route-art" aria-hidden="true">
+		<div className="route-orbit orbit-one" />
+		<div className="route-orbit orbit-two" />
+		<svg aria-hidden="true" viewBox="0 0 640 250" fill="none">
+			<path
+				className="route-grid"
+				d="M0 50h640M0 100h640M0 150h640M0 200h640M80 0v250M160 0v250M240 0v250M320 0v250M400 0v250M480 0v250M560 0v250"
+			/>
+			<path
+				className="route-wire"
+				d="M-30 190h130c44 0 38-100 92-100h74c58 0 34 90 92 90h70c46 0 27-140 80-140h162"
+			/>
+			<path
+				className="route-energy"
+				d="M-30 190h130c44 0 38-100 92-100h74c58 0 34 90 92 90h70c46 0 27-140 80-140h162"
+			/>
+			<circle className="route-node node-one" cx="100" cy="190" r="8" />
+			<circle className="route-node node-two" cx="240" cy="90" r="8" />
+			<circle className="route-node node-three" cx="400" cy="180" r="8" />
+			<circle className="route-node node-four" cx="540" cy="40" r="8" />
+		</svg>
+		<span className="route-caption">
+			<i /> 01 — 02 — 03
+		</span>
+	</div>
+);
+
 type User = { id: string; email: string | null };
 const nav = [
-	["learn", "?", "Как пользоваться", "How to use"],
-	["incidents", "◉", "Инциденты", "Incidents"],
-	["playbooks", "⌘", "Планы действий", "Action plans"],
+	["incidents", "◉", "Главная", "Workspace"],
+	["playbooks", "▤", "Инструкции", "Instructions"],
+	["history", "◷", "История", "History"],
 	["analytics", "▥", "Аналитика", "Analytics"],
 	["integrations", "↗", "Интеграции", "Integrations"],
+	["learn", "?", "Справка", "Help"],
 	["account", "◎", "Аккаунт", "Account"],
 ];
 
 export default function Product() {
 	const mainId = useId();
-	const [locale, setLocale] = useState<Locale>(() =>
-		localStorage.getItem("opsweave.locale.v1") === "en" ? "en" : "ru",
+	const [locale, setLocale] = useState<Locale>(() => {
+		try {
+			return localStorage.getItem("opsweave.locale.v1") === "en" ? "en" : "ru";
+		} catch {
+			return "ru";
+		}
+	});
+	const [theme, setTheme] = useState<"dark" | "light">(() => {
+		try {
+			return localStorage.getItem("opsweave.theme.v2") === "light"
+				? "light"
+				: "dark";
+		} catch {
+			return "dark";
+		}
+	});
+	useEffect(() => {
+		document.documentElement.dataset.theme = theme;
+		document.documentElement.style.colorScheme = theme;
+		try {
+			localStorage.setItem("opsweave.theme.v2", theme);
+		} catch {}
+	}, [theme]);
+	const themeButton = (
+		<button
+			className="theme-toggle"
+			onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+			aria-label={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+			title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+		>
+			<svg
+				aria-hidden="true"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="1.7"
+			>
+				{theme === "dark" ? (
+					<>
+						<circle cx="12" cy="12" r="4" />
+						<path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />
+					</>
+				) : (
+					<path d="M20 15.5A9 9 0 0 1 8.5 4 9 9 0 1 0 20 15.5Z" />
+				)}
+			</svg>
+		</button>
 	);
 	const [route, setRoute] = useState(
 		() => new URLSearchParams(location.search),
@@ -36,7 +142,9 @@ export default function Product() {
 	const t = (ru: string, en: string) => (locale === "ru" ? ru : en);
 	useEffect(() => {
 		document.documentElement.lang = locale;
-		localStorage.setItem("opsweave.locale.v1", locale);
+		try {
+			localStorage.setItem("opsweave.locale.v1", locale);
+		} catch {}
 	}, [locale]);
 	useEffect(() => {
 		const update = () => setRoute(new URLSearchParams(location.search));
@@ -88,7 +196,7 @@ export default function Product() {
 	if (me.isPending)
 		return (
 			<div className="initial-loading" aria-busy="true">
-				OpsWeave
+				Дежурно
 				<span>{t("Открываем пространство…", "Opening workspace…")}</span>
 			</div>
 		);
@@ -97,7 +205,8 @@ export default function Product() {
 			<Auth
 				locale={locale}
 				localeButton={changeLocale}
-				onLearn={() => navigate("learn")}
+				themeButton={themeButton}
+				onLearn={() => navigate("incidents")}
 				onSuccess={() => {
 					query.clear();
 					me.refetch();
@@ -111,7 +220,7 @@ export default function Product() {
 		);
 	const dataError = playbooks.error || runs.error;
 	return (
-		<div className="app-shell">
+		<div className={`app-shell page-${page}`}>
 			<a className="skip-link" href={`#${mainId}`}>
 				{t("Перейти к содержимому", "Skip to content")}
 			</a>
@@ -124,24 +233,26 @@ export default function Product() {
 						navigate("incidents");
 					}}
 				>
-					<span className="brand-mark">W</span>OpsWeave
+					<span className="brand-mark" aria-hidden="true">
+						{brandSymbol}
+					</span>
+					Дежурно
 					<span className="brand-dot" />
 				</a>
 				<div className="workspace">
 					<span className="workspace-avatar">
-						{me.data.email?.[0]?.toUpperCase() || "O"}
+						{me.data.email?.[0]?.toUpperCase() || brandSymbol}
 					</span>
 					<div>
-						<b>{t("Моё пространство", "My workspace")}</b>
+						<b>{t("Личное пространство", "Personal workspace")}</b>
 						<small>
-							{me.data.email ||
-								t("Гостевой доступ · 7 дней", "Guest session · 7 days")}
+							{me.data.email || t("Посетитель · 7 дней", "Visitor · 7 days")}
 						</small>
 					</div>
 				</div>
 				<p className="nav-label">{t("РЕАГИРОВАНИЕ", "RESPONSE")}</p>
 				<nav>
-					{nav.map(([key, icon, ru, en]) => (
+					{nav.map(([key, , ru, en]) => (
 						<a
 							key={key}
 							href={`?page=${key}`}
@@ -155,7 +266,19 @@ export default function Product() {
 								navigate(key);
 							}}
 						>
-							<span aria-hidden="true">{icon}</span>
+							<span aria-hidden="true">
+								<svg
+									aria-hidden="true"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="1.65"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								>
+									<path d={navPaths[key]} />
+								</svg>
+							</span>
 							{t(ru, en)}
 							{key === "incidents" && (
 								<em>
@@ -172,16 +295,12 @@ export default function Product() {
 						<span>
 							{runs.error
 								? t("Связь прервана", "Connection interrupted")
-								: t("Обновление каждые 2 с", "Updates every 2s")}
+								: t("На связи", "Connected")}
 						</span>
 					</div>
-					<p>
-						{t(
-							"Чёткий план. Видимый результат.",
-							"A clear plan. A visible outcome.",
-						)}
-					</p>
+
 					<div className="sidebar-controls">
+						{themeButton}
 						{changeLocale}
 						<button disabled={logout.isPending} onClick={() => logout.mutate()}>
 							{t("Выйти", "Sign out")}
@@ -195,16 +314,50 @@ export default function Product() {
 			<div className="workspace-main">
 				<header className="topbar">
 					<span>
-						OpsWeave <span className="separator">/</span>{" "}
+						Дежурно <span className="separator">/</span>{" "}
 						{t(
 							nav.find((n) => n[0] === page)?.[2] || "Редактор",
 							nav.find((n) => n[0] === page)?.[3] || "Editor",
 						)}
 					</span>
 					<span className="topbar-note">
-						{t("Личные записи на сервере", "Your records on the server")}
+						{new Date().toLocaleDateString(
+							locale === "ru" ? "ru-RU" : "en-GB",
+							{ day: "numeric", month: "long" },
+						)}
 					</span>
 					<div className="mobile-controls">
+						{themeButton}
+						<details className="mobile-more">
+							<summary>{t("Ещё", "More")}</summary>
+							<nav aria-label={t("Дополнительно", "More pages")}>
+								{nav
+									.filter((n) =>
+										["analytics", "integrations", "account"].includes(n[0]),
+									)
+									.map(([key, , ru, en]) => (
+										<a
+											key={key}
+											href={`?page=${key}`}
+											onClick={(e) => {
+												e.preventDefault();
+												e.currentTarget
+													.closest("details")
+													?.removeAttribute("open");
+												navigate(key);
+											}}
+										>
+											{t(ru, en)}
+										</a>
+									))}
+								<button
+									disabled={logout.isPending}
+									onClick={() => logout.mutate()}
+								>
+									{t("Выйти", "Sign out")}
+								</button>
+							</nav>
+						</details>
 						{changeLocale}
 						<button disabled={logout.isPending} onClick={() => logout.mutate()}>
 							{t("Выйти", "Sign out")}
@@ -216,237 +369,268 @@ export default function Product() {
 						<div className="guest-banner">
 							<span>
 								{t(
-									"Сохраните доступ к своим планам действий: создайте аккаунт до завершения гостевой сессии.",
-									"Keep access to your action plans: create an account before your guest session expires.",
+									"Личное пространство · 7 дней",
+									"Guest workspace · access for 7 days",
 								)}
 							</span>
 							<button onClick={() => navigate("account")}>
-								{t("Сохранить доступ", "Keep access")} →
+								{t("Создать аккаунт", "Keep access")} →
 							</button>
 						</div>
 					)}
-					{dataError && (
-						<div className="error" role="alert">
-							{errorText(dataError, locale)}{" "}
-							<button
-								onClick={() => {
-									playbooks.refetch();
-									runs.refetch();
-								}}
-							>
-								{t("Повторить", "Retry")}
-							</button>
-							{dataError instanceof ApiError && dataError.status === 401 && (
-								<button onClick={() => location.reload()}>
-									{t("Войти", "Sign in")}
+					<div className="content">
+						{dataError && (
+							<div className="error" role="alert">
+								{errorText(dataError, locale)}{" "}
+								<button
+									onClick={() => {
+										playbooks.refetch();
+										runs.refetch();
+									}}
+								>
+									{t("Повторить", "Retry")}
 								</button>
-							)}
-						</div>
-					)}
-					{playbooks.isPending || runs.isPending ? (
-						<section
-							className="loading-grid"
-							aria-label={t("Загрузка", "Loading")}
-							aria-busy="true"
-						>
-							<div />
-							<div />
-							<div />
-						</section>
-					) : (
-						<>
-							{page === "playbooks" && (
-								<>
-									<div className="section-heading">
-										<div>
-											<p className="eyebrow">
-												{t(
-													"ПОДГОТОВЬТЕСЬ ЗАРАНЕЕ",
-													"PREPARE BEFORE THE INCIDENT",
-												)}
-											</p>
-											<h1>{t("Планы действий", "Response action plans")}</h1>
-											<p className="muted">
-												{t(
-													"Подготовьте инструкцию для сбоя сайта, API или другого IT-сервиса. Действия выполняете вы, приложение хранит порядок и результат.",
-													"Prepare instructions for a website, API or other IT service failure. You perform the actions; the app keeps their order and outcome.",
-												)}
-											</p>
-										</div>
-										<button
-											className="primary"
-											onClick={() => navigate("editor")}
-										>
-											+ {t("Создать план", "Create action plan")}
-										</button>
-									</div>
-									{!playbooks.data?.length ? (
-										<div className="empty panel">
-											<span className="empty-symbol">⌘</span>
-											<h2>
-												{t(
-													"Подготовьте первый план на случай сбоя",
-													"Prepare your first plan for an IT failure",
-												)}
-											</h2>
-											<p>
-												{t(
-													"Добавьте задачи, подтверждение и проверку результата. Или начните с редактируемого шаблона восстановления.",
-													"Add tasks, an confirmation and outcome verification. Or start with an editable recovery template.",
-												)}
-											</p>
+								{dataError instanceof ApiError && dataError.status === 401 && (
+									<button onClick={() => location.reload()}>
+										{t("Войти", "Sign in")}
+									</button>
+								)}
+							</div>
+						)}
+						{playbooks.isPending || runs.isPending ? (
+							<section
+								className="loading-grid"
+								aria-label={t("Загрузка", "Loading")}
+								aria-busy="true"
+							>
+								<div />
+								<div />
+								<div />
+							</section>
+						) : (
+							<>
+								{page === "playbooks" && (
+									<>
+										<div className="section-heading">
+											<div>
+												<p className="eyebrow">{t("БИБЛИОТЕКА", "LIBRARY")}</p>
+												<h1>{t("Инструкции", "Instructions")}</h1>
+												<p className="muted">
+													{t(
+														"Создавайте, редактируйте и запускайте.",
+														"Your next steps, always within reach.",
+													)}
+												</p>
+											</div>
 											<button
 												className="primary"
 												onClick={() => navigate("editor")}
 											>
-												{t(
-													"Создать первый план",
-													"Create your first action plan",
-												)}{" "}
-												→
+												+ {t("Создать инструкцию", "Create instruction")}
 											</button>
 										</div>
-									) : (
-										<div className="playbook-grid">
-											{playbooks.data.map((p) => (
-												<article className="panel playbook-card" key={p.id}>
-													<div className="card-top">
-														<span className="card-symbol">⌘</span>
-														<span
-															className={`badge ${p.published ? "completed" : "pending"}`}
-														>
-															{p.published
-																? `${t("Версия", "Version")} ${p.published.version}`
-																: t("Черновик", "Draft")}
-														</span>
-													</div>
-													<h2>{p.name}</h2>
-													<p className="muted">
-														{p.description ||
-															t("Описание не добавлено", "No description yet")}
-													</p>
-													<div className="mini-track" aria-hidden="true">
-														{p.steps.slice(0, 8).map((s, i) => (
-															<span key={s.id}>{i + 1}</span>
-														))}
-													</div>
-													<footer>
-														<span>
-															{p.steps.length} {t("шагов", "steps")}
-														</span>
-														<button onClick={() => navigate("editor", p.id)}>
-															{t("Редактировать", "Edit")} ↗
-														</button>
-													</footer>
-												</article>
-											))}
-										</div>
-									)}
-								</>
-							)}
-							{page === "editor" && (
-								<Suspense
-									fallback={
-										<div className="loading-grid" aria-busy="true">
-											<div />
-										</div>
-									}
-								>
-									<Editor
-										key={id || "new"}
+										{!playbooks.data?.length ? (
+											<div className="empty panel">
+												<span className="empty-symbol">{brandSymbol}</span>
+												<h2>
+													{t(
+														"Подготовьте первый план на случай сбоя",
+														"Prepare your first plan for an IT failure",
+													)}
+												</h2>
+												<p>
+													{t(
+														"Добавьте задачи, подтверждение и проверку результата. Или начните с редактируемого шаблона восстановления.",
+														"Add tasks, an confirmation and outcome verification. Or start with an editable recovery template.",
+													)}
+												</p>
+												<button
+													className="primary"
+													onClick={() => navigate("editor")}
+												>
+													{t(
+														"Создать первую инструкцию",
+														"Create your first action plan",
+													)}{" "}
+													→
+												</button>
+											</div>
+										) : (
+											<div className="playbook-grid">
+												{playbooks.data.map((p) => (
+													<article className="panel playbook-card" key={p.id}>
+														<div className="card-top">
+															<span className="card-symbol">{brandSymbol}</span>
+															<span
+																className={`badge ${p.published ? "completed" : "pending"}`}
+															>
+																{p.published
+																	? `${t("Версия", "Version")} ${p.published.version}`
+																	: t("Черновик", "Draft")}
+															</span>
+														</div>
+														<h2>{p.name}</h2>
+														<p className="muted">
+															{p.description ||
+																t(
+																	"Описание не добавлено",
+																	"No description yet",
+																)}
+														</p>
+														<div className="mini-track" aria-hidden="true">
+															{p.steps.slice(0, 8).map((s, i) => (
+																<span key={s.id}>{i + 1}</span>
+															))}
+														</div>
+														<footer>
+															<span>
+																{p.steps.length} {t("шагов", "steps")}
+															</span>
+															{p.published && (
+																<button
+																	className="primary"
+																	onClick={() => {
+																		history.pushState(
+																			null,
+																			"",
+																			`?page=incidents&start=${p.id}`,
+																		);
+																		window.dispatchEvent(
+																			new PopStateEvent("popstate"),
+																		);
+																	}}
+																>
+																	{t("Запустить", "Run")} →
+																</button>
+															)}
+															<button onClick={() => navigate("editor", p.id)}>
+																{t("Редактировать", "Edit")} ↗
+															</button>
+														</footer>
+													</article>
+												))}
+											</div>
+										)}
+									</>
+								)}
+								{page === "editor" && (
+									<Suspense
+										fallback={
+											<div className="loading-grid" aria-busy="true">
+												<div />
+											</div>
+										}
+									>
+										<Editor
+											key={id || "new"}
+											locale={locale}
+											fromTemplate={route.get("template") === "recovery"}
+											start={(planId) => {
+												history.pushState(
+													null,
+													"",
+													`?page=incidents&start=${planId}`,
+												);
+												window.dispatchEvent(new PopStateEvent("popstate"));
+											}}
+											playbook={playbooks.data?.find((p) => p.id === id)}
+											close={() => navigate("playbooks")}
+										/>
+									</Suspense>
+								)}
+								{page === "learn" && (
+									<Suspense
+										fallback={
+											<p aria-busy="true">
+												{t("Загружаем пример…", "Loading example…")}
+											</p>
+										}
+									>
+										<Learn
+											key={me.data.id}
+											locale={locale}
+											userId={me.data.id}
+											renderRun={(runId) => (
+												<RunDetail
+													key={runId}
+													locale={locale}
+													id={runId}
+													back={() => navigate("incidents")}
+													navigate={navigate}
+												/>
+											)}
+										/>
+									</Suspense>
+								)}
+								{(page === "incidents" || page === "history") && (
+									<Incidents
+										key={`${page}:${route.get("start") || ""}`}
+										historyOnly={page === "history"}
 										locale={locale}
-										playbook={playbooks.data?.find((p) => p.id === id)}
-										close={() => navigate("playbooks")}
+										runs={runs.data || []}
+										playbooks={playbooks.data || []}
+										id={id}
+										navigate={navigate}
+										filter={route.get("filter") || "all"}
 									/>
-								</Suspense>
-							)}
-							{page === "learn" && (
-								<Suspense
-									fallback={
-										<p aria-busy="true">
-											{t("Загружаем пример…", "Loading example…")}
-										</p>
-									}
-								>
-									<Learn
-										key={me.data.id}
+								)}
+								{page === "analytics" && (
+									<Analytics locale={locale} runs={runs.data || []} />
+								)}
+								{page === "integrations" && (
+									<Integrations
 										locale={locale}
-										userId={me.data.id}
-										renderRun={(runId) => (
-											<RunDetail
-												key={runId}
+										playbooks={playbooks.data || []}
+									/>
+								)}
+								{page === "account" && (
+									<section className="account">
+										<p className="eyebrow">
+											{t("ДОСТУП К ПРОСТРАНСТВУ", "WORKSPACE ACCESS")}
+										</p>
+										<h1>{t("Ваш аккаунт", "Your account")}</h1>
+										{me.data.email ? (
+											<div className="panel">
+												<h2>{me.data.email}</h2>
+												<p>
+													{t(
+														"Данные сохранены на сервере и доступны после входа с другого устройства.",
+														"Your data is saved on the server and available when you sign in on another device.",
+													)}
+												</p>
+											</div>
+										) : (
+											<AuthForm
 												locale={locale}
-												id={runId}
-												back={() => navigate("incidents")}
-												navigate={navigate}
+												mode="register"
+												onSuccess={() => me.refetch()}
 											/>
 										)}
-									/>
-								</Suspense>
-							)}
-							{page === "incidents" && (
-								<Incidents
-									locale={locale}
-									runs={runs.data || []}
-									playbooks={playbooks.data || []}
-									id={id}
-									navigate={navigate}
-									filter={route.get("filter") || "all"}
-								/>
-							)}
-							{page === "analytics" && (
-								<Analytics locale={locale} runs={runs.data || []} />
-							)}
-							{page === "integrations" && (
-								<Integrations
-									locale={locale}
-									playbooks={playbooks.data || []}
-								/>
-							)}
-							{page === "account" && (
-								<section className="account">
-									<p className="eyebrow">
-										{t("ДОСТУП К ПРОСТРАНСТВУ", "WORKSPACE ACCESS")}
-									</p>
-									<h1>{t("Ваш аккаунт", "Your account")}</h1>
-									{me.data.email ? (
-										<div className="panel">
-											<h2>{me.data.email}</h2>
+										<div className="panel account-note">
+											<h2>
+												{t(
+													"Личное рабочее пространство",
+													"A personal workspace",
+												)}
+											</h2>
 											<p>
 												{t(
-													"Данные сохранены на сервере и доступны после входа с другого устройства.",
-													"Your data is saved on the server and available when you sign in on another device.",
+													"Инструкции, выполнения и ключ интеграции доступны только в вашем аккаунте. Общих гостевых данных, приглашений и командных ролей нет.",
+													"Your account owns its action plans, executions and integration key. Guest data is never shared. Invitations and team roles are not available.",
+												)}
+											</p>
+											<p>
+												{t(
+													"Почта используется для входа. Восстановление пароля через email пока недоступно — сохраните пароль в менеджере.",
+													"Email is used to sign in. Email password recovery is not available yet — save your password in a password manager.",
 												)}
 											</p>
 										</div>
-									) : (
-										<AuthForm
-											locale={locale}
-											mode="register"
-											onSuccess={() => me.refetch()}
-										/>
-									)}
-									<div className="panel account-note">
-										<h2>
-											{t("Личное рабочее пространство", "A personal workspace")}
-										</h2>
-										<p>
-											{t(
-												"Планы действий, выполнения и ключ интеграции доступны только в вашем аккаунте. Общих гостевых данных, приглашений и командных ролей нет.",
-												"Your account owns its action plans, executions and integration key. Guest data is never shared. Invitations and team roles are not available.",
-											)}
-										</p>
-										<p>
-											{t(
-												"Почта используется для входа. Восстановление пароля через email пока недоступно — сохраните пароль в менеджере.",
-												"Email is used to sign in. Email password recovery is not available yet — save your password in a password manager.",
-											)}
-										</p>
-									</div>
-								</section>
-							)}
-						</>
-					)}
+									</section>
+								)}
+							</>
+						)}
+					</div>
 				</main>
 			</div>
 		</div>
@@ -454,6 +638,7 @@ export default function Product() {
 }
 
 function Auth({
+	themeButton,
 	locale,
 	localeButton,
 	onSuccess,
@@ -462,12 +647,14 @@ function Auth({
 }: {
 	locale: Locale;
 	localeButton: React.ReactNode;
+	themeButton: React.ReactNode;
 	onSuccess: () => void;
 	error: unknown;
 	onLearn: () => void;
 }) {
 	const t = (ru: string, en: string) => (locale === "ru" ? ru : en);
 	const [mode, setMode] = useState<"login" | "register">("login");
+	const [showLogin, setShowLogin] = useState(false);
 	const [intro, setIntro] = useState(false);
 	const help = useRef<HTMLButtonElement>(null);
 	const guest = useMutation({
@@ -481,17 +668,32 @@ function Auth({
 		<div className="auth-page">
 			<header>
 				<a className="brand" href="/">
-					<span className="brand-mark">W</span>OpsWeave
+					<span className="brand-mark" aria-hidden="true">
+						{brandSymbol}
+					</span>
+					Дежурно
 				</a>
 				<div className="actions">
-					<button ref={help} onClick={() => setIntro(true)}>
-						{t("Как пользоваться", "How to use")}
+					{themeButton}
+					<button
+						className="public-help"
+						aria-label={t("Справка", "Help")}
+						ref={help}
+						onClick={() => setIntro(!intro)}
+					>
+						{t("Справка", "Help")}
 					</button>
 					{localeButton}
+					<button
+						onClick={() => setShowLogin(!showLogin)}
+						aria-expanded={showLogin}
+					>
+						{showLogin ? t("Назад", "Back") : t("Войти", "Sign in")} ↗
+					</button>
 				</div>
 			</header>
-			{intro && (
-				<div className="welcome-guide">
+			<div className="welcome-guide">
+				{intro && (
 					<Guide
 						locale={locale}
 						onClose={() => {
@@ -500,165 +702,204 @@ function Auth({
 						}}
 						steps={[
 							{
-								title: t(
-									"Откройте учебный пример",
-									"Open the practice example",
-								),
+								title: t("Откройте пространство", "Open your workspace"),
 								text: t(
-									"Кнопка ниже создаёт ваше отдельное гостевое пространство. Учебные шаги вы выполните сами, без действий с реальным сайтом.",
-									"The button below creates your own guest workspace. You will perform practice steps yourself, without affecting a real website.",
+									"Попробовать без регистрации создаёт отдельное пространство. Инструкции и история сохраняются на сервере.",
+									"Try without signing up creates a private workspace. Instructions and history are saved on the server.",
 								),
 								target: "[data-learn='guest']",
 							},
 							{
-								title: t("Войдите для своей работы", "Sign in for your work"),
-								text: t(
-									"Используйте личный аккаунт или регистрацию. Общих аккаунтов, приглашений и командных ролей здесь нет.",
-									"Use your personal account or sign up. There are no shared accounts, invitations or team roles here.",
+								title: t(
+									"Создайте и запустите инструкцию",
+									"Create and run an instruction",
 								),
-								target: "[data-learn='login']",
+								text: t(
+									"Начните с готовой инструкции или создайте свою. Сохраните, опубликуйте и запустите её. Задачи выполняете вы, приложение хранит результаты.",
+									"Start with a ready instruction or create your own. Save, publish and run it. You perform tasks; the app keeps the results.",
+								),
+								target: "[data-learn='guest']",
 							},
 							{
 								title: t("Сохраните доступ", "Keep access"),
 								text: t(
-									"У гостя записи сохраняются на сервере, а доступ держится на cookie 7 дней. Регистрация сохраняет эти же записи за вашим аккаунтом. Восстановления пароля по почте пока нет.",
-									"Guest records are saved on the server; access depends on a cookie lasting 7 days. Signing up keeps those records under your account. Email password recovery is not available.",
+									"Гостевой доступ привязан к cookie этого браузера и действует 7 дней. Регистрация закрепит уже созданные записи за вами. После выхода или потери cookie без регистрации вернуться нельзя.",
+									"Guest access uses this browser's cookie for 7 days. Register to keep your existing records. Signing out or losing the cookie removes access unless you registered.",
 								),
 								target: "[data-learn='guest']",
 							},
 						]}
 					/>
-				</div>
-			)}
-			<main className="auth-layout">
+				)}
+			</div>
+			<main
+				className="auth-layout"
+				onPointerMove={(event) => {
+					if (
+						matchMedia("(prefers-reduced-motion: reduce)").matches ||
+						event.pointerType !== "mouse"
+					)
+						return;
+					const rect = event.currentTarget.getBoundingClientRect();
+					event.currentTarget.style.setProperty(
+						"--pointer-x",
+						String(((event.clientX - rect.left) / rect.width - 0.5) * 12),
+					);
+					event.currentTarget.style.setProperty(
+						"--pointer-y",
+						String(((event.clientY - rect.top) / rect.height - 0.5) * 8),
+					);
+				}}
+				onPointerLeave={(event) => {
+					event.currentTarget.style.setProperty("--pointer-x", "0");
+					event.currentTarget.style.setProperty("--pointer-y", "0");
+				}}
+			>
 				<section className="auth-story">
 					<p className="eyebrow">
-						{t("СБОЙ САЙТА ИЛИ IT-СЕРВИСА", "WEBSITE OR IT SERVICE FAILURE")}
+						{t("ИНСТРУМЕНТ ДЛЯ РЕАГИРОВАНИЯ", "INCIDENT RESPONSE WORKSPACE")}
 					</p>
 					<h1>
-						{t(
-							"Пошаговые планы для устранения сбоев сайтов и IT-сервисов",
-							"Step-by-step plans for website and IT service failures",
-						)}
+						{t("Сбой — не время", "An incident is no time")}
+						<br />
+						<span>{t("вспоминать порядок.", "to improvise.")}</span>
 					</h1>
 					<p className="auth-lead">
 						{t(
-							"В интернет-магазине перестала работать оплата. Откройте подготовленный план: проверить ошибку, связаться с ответственным специалистом, подтвердить шаги и записать результат.",
-							"Checkout stopped working in an online store. Open a prepared plan: check the error, contact the responsible specialist, confirm the steps and record the outcome.",
-						)}
-					</p>
-					<div className="auth-process">
-						<div>
-							<b>01</b>
-							<span>
-								{t("План", "Action plan")}
-								<small>
-									{t("Ваш порядок действий", "Your sequence of actions")}
-								</small>
-							</span>
-						</div>
-						<div>
-							<b>02</b>
-							<span>
-								{t("Реагирование", "Response")}
-								<small>
-									{t("Реальные задачи и решения", "Real tasks and decisions")}
-								</small>
-							</span>
-						</div>
-						<div>
-							<b>03</b>
-							<span>
-								{t("Результат", "Outcome")}
-								<small>{t("Сохранённая история", "A saved history")}</small>
-							</span>
-						</div>
-					</div>
-					<p className="privacy-note">
-						{t(
-							"Это учебная история, не автоматический ремонт. OpsWeave ведёт по инструкции; RelayOps служит для учёта проблем команды.",
-							"This is a practice story, not automatic repair. OpsWeave guides you through instructions; RelayOps tracks team issues.",
-						)}
-						<br />
-						{t(
-							"Отдельное пространство для каждого пользователя. Без общих демо-данных.",
-							"A separate workspace for every user. No shared demo data.",
-						)}
-					</p>
-				</section>
-				<section className="auth-panel panel">
-					<h2>
-						{t("Попробовать на учебном примере", "Try a practice example")}
-					</h2>
-					<p className="muted">
-						{t(
-							"Пример про недоступную оплату создаётся в отдельном пространстве посетителя. Без регистрации и без реальных внешних действий.",
-							"The checkout example uses your own visitor workspace. No signup and no real external actions.",
+							"Запускайте готовые инструкции. Проходите шаги. Держите решения и результат в одном месте.",
+							"Run your instructions. Work through the steps. Keep decisions and outcomes together.",
 						)}
 					</p>
 					<button
-						className="primary wide"
+						className="primary guest-cta"
 						data-learn="guest"
-						aria-label={t("Открыть учебный пример", "Open practice example")}
 						disabled={guest.isPending}
 						onClick={() => guest.mutate()}
 					>
 						{guest.isPending
-							? t("Создаём пространство…", "Creating workspace…")
-							: t("Открыть учебный пример", "Open practice example")}{" "}
-						→
+							? t("Открываем пространство…", "Opening workspace…")
+							: t("Попробовать без регистрации", "Try without signing up")}{" "}
+						<span aria-hidden="true">↗</span>
 					</button>
-					<p className="small muted">
+					<p className="access-note">
 						{t(
-							"Записи сохраняются на сервере и не сбрасываются при обновлении. Доступ гостя — по cookie этого браузера на 7 дней; после выхода или потери cookie без регистрации вернуться нельзя.",
-							"Records are saved on the server and survive refresh. Guest access uses this browser’s cookie for 7 days; after signing out or losing the cookie, you cannot return unless you registered.",
+							"Без почты и пароля. Отдельное пространство на 7 дней.",
+							"No email or password. Your own workspace for 7 days.",
 						)}
 					</p>
 					{Boolean(guest.error || error) && (
 						<div className="error" role="alert">
 							{errorText(guest.error || error, locale)}
-							<button onClick={() => location.reload()}>
+							<button onClick={() => guest.mutate()} disabled={guest.isPending}>
 								{t("Повторить", "Retry")}
 							</button>
 						</div>
 					)}
-					<div className="auth-divider">
-						{t("Для личной работы", "For your own work")}
+					<div className="auth-principles">
+						<span>01 / {t("Подготовьте", "Prepare")}</span>
+						<span>02 / {t("Выполните", "Act")}</span>
+						<span>03 / {t("Сохраните", "Keep")}</span>
 					</div>
-					<div className="tabs" data-learn="login" tabIndex={-1}>
-						<button
-							aria-pressed={mode === "login"}
-							onClick={() => setMode("login")}
-						>
-							{t("Войти для работы", "Sign in for work")}
-						</button>
-						<button
-							aria-pressed={mode === "register"}
-							onClick={() => setMode("register")}
-						>
-							{t("Регистрация", "Sign up")}
-						</button>
-					</div>
-					<AuthForm
-						key={mode}
-						locale={locale}
-						mode={mode}
-						onSuccess={onSuccess}
-					/>
 				</section>
+				{showLogin ? (
+					<section
+						className="auth-panel panel"
+						aria-label={t("Вход в аккаунт", "Account sign in")}
+					>
+						<h2>
+							{mode === "login"
+								? t("С возвращением", "Welcome back")
+								: t("Ваше пространство", "Your workspace")}
+						</h2>
+						<div className="tabs">
+							<button
+								aria-pressed={mode === "login"}
+								onClick={() => setMode("login")}
+							>
+								{t("Войти", "Sign in")}
+							</button>
+							<button
+								aria-pressed={mode === "register"}
+								onClick={() => setMode("register")}
+							>
+								{t("Регистрация", "Sign up")}
+							</button>
+						</div>
+						<AuthForm
+							key={mode}
+							locale={locale}
+							mode={mode}
+							onSuccess={onSuccess}
+						/>
+						<p className="muted small">
+							{t(
+								"Восстановление пароля по почте пока недоступно.",
+								"Email password recovery is not available yet.",
+							)}
+						</p>
+					</section>
+				) : (
+					<section
+						className="instruction-preview"
+						aria-label={t("Маршрут выполнения", "Execution route")}
+					>
+						<img
+							className="hero-ribbon"
+							src="/visuals/route-ribbon.png"
+							alt=""
+							width="1536"
+							height="1024"
+							fetchPriority="high"
+						/>
+						<div className="scene-beacon">
+							<span className="scene-beacon-dot" />
+							<span>
+								{t("От сигнала до результата", "From signal to outcome")}
+							</span>
+						</div>
+						{routeArt}
+						<div className="scene-step step-a">
+							<span className="scene-check">✓</span>
+							<div>
+								<small>01 / {t("ДИАГНОСТИКА", "DIAGNOSIS")}</small>
+								<b>{t("Проверить метрики", "Check metrics")}</b>
+							</div>
+						</div>
+						<div className="scene-step step-b">
+							<span className="scene-pulse" />
+							<div>
+								<small>02 / {t("РЕШЕНИЕ", "DECISION")}</small>
+								<b>{t("Подтвердить действие", "Confirm action")}</b>
+							</div>
+							<span className="scene-arrow">↗</span>
+						</div>
+						<div className="scene-step step-c">
+							<span className="scene-last">03</span>
+							<div>
+								<small>{t("РЕЗУЛЬТАТ", "OUTCOME")}</small>
+								<b>{t("Сохранить в историю", "Save to history")}</b>
+							</div>
+						</div>
+						<div className="scene-footer">
+							<span className="scene-live-dot" />
+							{t(
+								"Каждый шаг связан со следующим",
+								"Every step connected to the next",
+							)}
+						</div>
+					</section>
+				)}
 			</main>
-			<p className="hosting-note">
-				{t(
-					"После простоя первый запуск может занять более 50 секунд. Восстановление пароля по почте пока недоступно.",
-					"After inactivity the first request may take over 50 seconds. Email password recovery is not available yet.",
-				)}
-			</p>
 			<footer className="auth-footer">
-				OpsWeave ·{" "}
-				{t(
-					"Планы действий для IT-сбоев",
-					"Step-by-step plans for IT service failures",
-				)}
+				<span>
+					Дежурно / {t("Инструкции и выполнение", "Instructions and execution")}
+				</span>
+				<span>
+					{t(
+						"Данные сохраняются в вашем пространстве.",
+						"Records stay in your workspace.",
+					)}
+				</span>
 			</footer>
 		</div>
 	);
@@ -733,6 +974,7 @@ function Incidents({
 	id,
 	navigate,
 	filter,
+	historyOnly = false,
 }: {
 	locale: Locale;
 	runs: Run[];
@@ -740,10 +982,20 @@ function Incidents({
 	id: string | null;
 	navigate: (page: string, id?: string) => void;
 	filter: string;
+	historyOnly?: boolean;
 }) {
 	const t = (ru: string, en: string) => (locale === "ru" ? ru : en);
-	const [creating, setCreating] = useState(false);
+	const [creating, setCreating] = useState(
+		!!new URLSearchParams(location.search).get("start"),
+	);
 	const query = useQueryClient();
+	const active = runs.find((r) => ["running", "waiting"].includes(r.status));
+	const current = active?.steps[active.cursor];
+	const ready = playbooks.find((p) => p.published);
+	const openTemplate = () => {
+		history.pushState(null, "", "?page=editor&template=recovery");
+		window.dispatchEvent(new PopStateEvent("popstate"));
+	};
 	const [search, setSearch] = useState("");
 	const visible = runs.filter(
 		(r) =>
@@ -772,35 +1024,43 @@ function Incidents({
 			/>
 		);
 	return (
-		<section>
+		<section className={historyOnly ? "history-page" : "overview-page"}>
 			<div className="section-heading">
 				<div>
 					<p className="eyebrow">
-						{t("ЦЕНТР РЕАГИРОВАНИЯ", "RESPONSE CENTER")}
+						{historyOnly
+							? t("ВЫПОЛНЕНИЕ", "EXECUTION")
+							: t("ОБЗОР", "OVERVIEW")}
 					</p>
 					<h1>
-						{t(
-							"Каждому инциденту — следующий шаг",
-							"Every incident has a next step",
-						)}
+						{historyOnly
+							? t("История запусков", "Run history")
+							: t("В работе", "In progress")}
 					</h1>
 					<p className="muted">
 						{t(
-							"Проходите план по порядку и сохраняйте результат выполненных вами действий.",
-							"Follow a plan in order and record the results of the actions you perform.",
+							"Запуски, которым нужно ваше действие.",
+							"Runs that need your action.",
 						)}
 					</p>
 				</div>
 				<button
 					className="primary"
-					onClick={() => setCreating(!creating)}
-					disabled={!playbooks.some((p) => p.published)}
+					onClick={() =>
+						playbooks.some((p) => p.published)
+							? setCreating(!creating)
+							: navigate("editor")
+					}
+					aria-expanded={creating}
 				>
-					+ {t("Создать инцидент", "Create incident")}
+					↗ {t("Запустить инструкцию", "Run an instruction")}
 				</button>
 			</div>
 			{creating && (
 				<CreateIncident
+					initialPlaybookId={
+						new URLSearchParams(location.search).get("start") || undefined
+					}
 					locale={locale}
 					playbooks={playbooks}
 					close={() => setCreating(false)}
@@ -811,156 +1071,347 @@ function Incidents({
 					}}
 				/>
 			)}
-			<div className="metrics">
-				<div>
-					<span>{t("Открытые инциденты", "Open incidents")}</span>
-					<strong>
-						{runs.filter((r) => r.incidentStatus !== "resolved").length}
-					</strong>
-					<small>{t("Нуждаются в реагировании", "Need a response")}</small>
-				</div>
-				<div>
-					<span>{t("Ожидают действия", "Waiting for action")}</span>
-					<strong className="amber-text">
-						{
-							runs.filter(
-								(r) =>
-									r.status === "waiting" && r.steps[r.cursor]?.type !== "wait",
-							).length
-						}
-					</strong>
-					<small>
-						{t("Задачи и подтверждения", "Tasks and confirmations")}
-					</small>
-				</div>
-				<div>
-					<span>{t("Устранены", "Resolved")}</span>
-					<strong className="green-text">
-						{runs.filter((r) => r.incidentStatus === "resolved").length}
-					</strong>
-					<small>{t("С сохранённой историей", "With a saved history")}</small>
-				</div>
-			</div>
-			{!runs.length ? (
-				<div className="empty panel">
-					<span className="empty-symbol">↗</span>
-					<h2>
-						{t("Готовность начинается с плана", "Readiness starts with a plan")}
-					</h2>
-					<p>
-						{playbooks.some((p) => p.published)
-							? t(
-									"Ваш план готов. Создайте инцидент — сервер начнёт выполнение и покажет, где нужно ваше действие.",
-									"Your action plan is ready. Create an incident — the server will execute it and show where your action is needed.",
-								)
-							: t(
-									"Создайте и опубликуйте первый план. После этого вы сможете запустить реальное реагирование.",
-									"Create and publish your first action plan. Then start a real incident response.",
+			{!creating && (
+				<>
+					{!historyOnly && (
+						<div className="overview-grid">
+							<div className="overview-body">
+								<article className="focus-surface">
+									{routeArt}
+									<div className="focus-content">
+										<div className="focus-meta">
+											<span className="live-dot" />
+											{active
+												? t("СЕЙЧАС В РАБОТЕ", "IN PROGRESS")
+												: t("БЫСТРЫЙ СТАРТ", "QUICK START")}
+											<span className="focus-code">
+												{active ? active.service : "OPS / 001"}
+											</span>
+										</div>
+										<h2>
+											{active
+												? active.title
+												: ready?.published?.name ||
+													t(
+														"Первая инструкция — уже здесь",
+														"Your first instruction is ready",
+													)}
+										</h2>
+										{active ? (
+											<>
+												<p>{active.playbookName}</p>
+												<fieldset
+													className="focus-progress"
+													aria-label={t(
+														"Прогресс выполнения",
+														"Execution progress",
+													)}
+												>
+													{active.steps.map((step, i) => (
+														<span
+															key={step.id}
+															className={
+																i === active.cursor
+																	? "current"
+																	: step.status === "completed"
+																		? "done"
+																		: ""
+															}
+														>
+															{step.status === "completed" ? "✓" : i + 1}
+														</span>
+													))}
+												</fieldset>
+												<div className="focus-action">
+													<div>
+														<small>{t("СЛЕДУЮЩИЙ ШАГ", "NEXT STEP")}</small>
+														<h3>
+															{current?.title || label(active.status, locale)}
+														</h3>
+													</div>
+													<button
+														className="primary"
+														onClick={() => navigate("incidents", active.id)}
+													>
+														{t("Продолжить", "Continue")} →
+													</button>
+												</div>
+											</>
+										) : (
+											<>
+												<p>
+													{ready
+														? t(
+																"Запустите инструкцию, чтобы начать выполнение.",
+																"Your instruction is ready. Run it and work through the steps at your pace.",
+															)
+														: t(
+																"Проверка, решение, контроль результата. Измените готовый маршрут под свой сервис.",
+																"Start with a service recovery instruction, or create your own.",
+															)}
+												</p>
+												<div className="focus-route" aria-hidden="true">
+													<span>
+														01 <small>{t("Проверить", "Investigate")}</small>
+													</span>
+													<i>→</i>
+													<span>
+														02 <small>{t("Подтвердить", "Confirm")}</small>
+													</span>
+													<i>→</i>
+													<span>
+														03 <small>{t("Завершить", "Resolve")}</small>
+													</span>
+												</div>
+												<button
+													className="primary"
+													onClick={() =>
+														ready ? setCreating(true) : openTemplate()
+													}
+												>
+													{ready
+														? t("Начать выполнение", "Start execution")
+														: t(
+																"Открыть готовую инструкцию",
+																"Open a ready instruction",
+															)}{" "}
+													→
+												</button>
+											</>
+										)}
+									</div>{" "}
+								</article>
+								<div className="library-heading">
+									<h2>{t("Инструкции", "Instructions")}</h2>
+									<button
+										className="text-button"
+										onClick={() => navigate("playbooks")}
+									>
+										{t("Все инструкции", "All instructions")} ↗
+									</button>
+								</div>
+								{playbooks.length ? (
+									<div className="quick-library">
+										{playbooks.slice(0, 4).map((p, i) => (
+											<button
+												key={p.id}
+												onClick={() => navigate("editor", p.id)}
+											>
+												<span className="library-number">
+													{String(i + 1).padStart(2, "0")}
+												</span>
+												<span>
+													<b>{p.name}</b>
+													<small>
+														{p.steps.length} {t("шагов", "steps")} ·{" "}
+														{p.published
+															? t("Готова к запуску", "Ready to run")
+															: t("Черновик", "Draft")}
+													</small>
+												</span>
+												<span aria-hidden="true">↗</span>
+											</button>
+										))}
+									</div>
+								) : (
+									<div className="library-empty">
+										<span>
+											{t(
+												"Здесь будут ваши инструкции",
+												"Your instructions will live here",
+											)}
+										</span>
+										<button onClick={() => navigate("editor")}>
+											+ {t("Создать инструкцию", "Create instruction")}
+										</button>
+									</div>
 								)}
-					</p>
-					<button
-						className="primary"
-						onClick={() =>
-							playbooks.some((p) => p.published)
-								? setCreating(true)
-								: navigate("playbooks")
-						}
-					>
-						{playbooks.some((p) => p.published)
-							? t("Запустить первый инцидент", "Start your first incident")
-							: t("Перейти к планам действий", "Go to action plans")}{" "}
-						→
-					</button>
-				</div>
-			) : (
-				<div className="panel incident-list">
-					<div className="list-toolbar">
-						<div className="tabs">
-							{[
-								["all", "Все", "All"],
-								["active", "Открытые", "Open"],
-								["waiting", "Ожидают", "Waiting"],
-								["resolved", "Устранены", "Resolved"],
-							].map(([key, ru, en]) => (
+							</div>
+							<aside className="activity-rail">
+								<p className="eyebrow">{t("АКТИВНОСТЬ", "ACTIVITY")}</p>
+								<div className="pulse-stat">
+									<strong>
+										{
+											runs.filter((r) =>
+												["running", "waiting"].includes(r.status),
+											).length
+										}
+									</strong>
+									<span>{t("в работе", "in progress")}</span>
+								</div>
+								<div className="pulse-stat">
+									<strong>
+										{runs.filter((r) => r.status === "completed").length}
+									</strong>
+									<span>{t("завершено", "completed")}</span>
+								</div>
+								<h2>{t("Последние запуски", "Recent runs")}</h2>
+								{runs.length ? (
+									runs.slice(0, 4).map((r) => (
+										<a
+											key={r.id}
+											href={`?page=incidents&id=${r.id}`}
+											onClick={(e) => {
+												e.preventDefault();
+												navigate("incidents", r.id);
+											}}
+										>
+											<span className={`activity-dot ${r.status}`} />
+											<div>
+												<time>{date(r.updated, locale)}</time>
+												<b>{r.title}</b>
+												<small>{label(r.status, locale)}</small>
+											</div>
+										</a>
+									))
+								) : (
+									<p className="activity-empty">
+										{t(
+											"Запустите инструкцию — здесь появится история действий.",
+											"All quiet. Your results will appear here after the first run.",
+										)}
+									</p>
+								)}
 								<button
-									key={key}
-									aria-pressed={filter === key}
-									onClick={() => setFilter(key)}
+									className="text-button"
+									onClick={() => navigate("history")}
 								>
-									{t(ru, en)}
+									{t("Открыть историю", "Open history")} →
 								</button>
-							))}
+							</aside>
 						</div>
-						<input
-							aria-label={t("Поиск инцидентов", "Search incidents")}
-							placeholder={t(
-								"Поиск по названию или сервису",
-								"Search title or service",
-							)}
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
-						/>
-					</div>
-					{!visible.length ? (
-						<div className="empty">
-							<h2>{t("Ничего не найдено", "No results")}</h2>
+					)}
+					<h2 className="history-heading">
+						{historyOnly
+							? t("Все выполнения", "All executions")
+							: t("Запуски инструкций", "Instruction runs")}
+					</h2>
+					{!runs.length ? (
+						<div className="empty panel history-empty">
+							<span className="empty-symbol">↗</span>
+							<h2>{t("Ещё нет запусков", "No runs yet")}</h2>
 							<p>
-								{t(
-									"Измените запрос или фильтр.",
-									"Change the search or filter.",
-								)}
+								{playbooks.some((p) => p.published)
+									? t(
+											"Запустите инструкцию — здесь сохранится каждый шаг.",
+											"Your action plan is ready. Create an incident — the server will execute it and show where your action is needed.",
+										)
+									: t(
+											"Сохраните и опубликуйте инструкцию, чтобы начать выполнение.",
+											"Create and publish your first action plan. Then start a real incident response.",
+										)}
 							</p>
 							<button
-								onClick={() => {
-									setSearch("");
-									setFilter("all");
-								}}
+								className="primary"
+								onClick={() =>
+									playbooks.some((p) => p.published)
+										? setCreating(true)
+										: navigate("playbooks")
+								}
 							>
-								{t("Сбросить фильтры", "Clear filters")}
+								{playbooks.some((p) => p.published)
+									? t(
+											"Запустить первую инструкцию",
+											"Start your first incident",
+										)
+									: t("Перейти к инструкциям", "Go to action plans")}{" "}
+								→
 							</button>
 						</div>
 					) : (
-						visible.map((run) => (
-							<a
-								className="incident-row"
-								key={run.id}
-								href={`?page=incidents&id=${run.id}`}
-								onClick={(e) => {
-									e.preventDefault();
-									navigate("incidents", run.id);
-								}}
-							>
-								<span className={`severity-dot ${run.severity}`} />
-								<div className="incident-name">
-									<span className="small muted">
-										{run.service}{" "}
-										<span className="mono">· {run.id.slice(0, 8)}</span>
-									</span>
-									<h2>{run.title}</h2>
-									<span className="small muted">
-										{run.playbookName} · v{run.version}
-									</span>
+						<div className="panel incident-list">
+							<div className="list-toolbar">
+								<div className="tabs">
+									{[
+										["all", "Все", "All"],
+										["active", "Открытые", "Open"],
+										["waiting", "Ожидают", "Waiting"],
+										["resolved", "Устранены", "Resolved"],
+									].map(([key, ru, en]) => (
+										<button
+											key={key}
+											aria-pressed={filter === key}
+											onClick={() => setFilter(key)}
+										>
+											{t(ru, en)}
+										</button>
+									))}
 								</div>
-								<div className="row-state">
-									<span className={`badge ${run.status}`}>
-										{label(run.status, locale)}
-									</span>
-									<small>
-										{run.steps[run.cursor]?.title ||
-											label(run.incidentStatus, locale)}
-									</small>
+								<input
+									aria-label={t("Поиск инцидентов", "Search incidents")}
+									placeholder={t(
+										"Поиск по названию или сервису",
+										"Search title or service",
+									)}
+									value={search}
+									onChange={(e) => setSearch(e.target.value)}
+								/>
+							</div>
+							{!visible.length ? (
+								<div className="empty">
+									<h2>{t("Ничего не найдено", "No results")}</h2>
+									<p>
+										{t(
+											"Измените запрос или фильтр.",
+											"Change the search or filter.",
+										)}
+									</p>
+									<button
+										onClick={() => {
+											setSearch("");
+											setFilter("all");
+										}}
+									>
+										{t("Сбросить фильтры", "Clear filters")}
+									</button>
 								</div>
-								<span className="row-time">{date(run.created, locale)}</span>
-								<span aria-hidden="true">↗</span>
-							</a>
-						))
+							) : (
+								visible.map((run) => (
+									<a
+										className="incident-row"
+										key={run.id}
+										href={`?page=incidents&id=${run.id}`}
+										onClick={(e) => {
+											e.preventDefault();
+											navigate("incidents", run.id);
+										}}
+									>
+										<span className={`severity-dot ${run.severity}`} />
+										<div className="incident-name">
+											<span className="small muted">
+												{run.service}{" "}
+												<span className="mono">· {run.id.slice(0, 8)}</span>
+											</span>
+											<h2>{run.title}</h2>
+											<span className="small muted">
+												{run.playbookName} · v{run.version}
+											</span>
+										</div>
+										<div className="row-state">
+											<span className={`badge ${run.status}`}>
+												{label(run.status, locale)}
+											</span>
+											<small>
+												{run.steps[run.cursor]?.title ||
+													label(run.incidentStatus, locale)}
+											</small>
+										</div>
+										<span className="row-time">
+											{date(run.created, locale)}
+										</span>
+										<span aria-hidden="true">↗</span>
+									</a>
+								))
+							)}
+						</div>
 					)}
-				</div>
+				</>
 			)}
 		</section>
 	);
 }
 function CreateIncident({
+	initialPlaybookId,
 	locale,
 	playbooks,
 	close,
@@ -970,6 +1421,7 @@ function CreateIncident({
 	playbooks: Playbook[];
 	close: () => void;
 	done: (run: Run) => void;
+	initialPlaybookId?: string;
 }) {
 	const t = (ru: string, en: string) => (locale === "ru" ? ru : en);
 	const { register, handleSubmit } = useForm({
@@ -977,7 +1429,9 @@ function CreateIncident({
 			title: "",
 			service: "",
 			severity: "high",
-			playbookId: playbooks.find((p) => p.published)?.id,
+			playbookId:
+				playbooks.find((p) => p.id === initialPlaybookId && p.published)?.id ||
+				playbooks.find((p) => p.published)?.id,
 		},
 	});
 	const key = useRef(crypto.randomUUID());
@@ -1013,7 +1467,7 @@ function CreateIncident({
 					/>
 					<small className="muted">
 						{t(
-							"Кратко опишите сбой — так вы найдёте его в истории.",
+							"Для поиска в истории.",
 							"A short failure description helps you find it in history.",
 						)}
 					</small>
@@ -1029,7 +1483,7 @@ function CreateIncident({
 					/>
 					<small className="muted">
 						{t(
-							"Название сайта или сервиса для группировки. Подключения к нему не создаётся.",
+							"Для группировки запусков.",
 							"A site or service name for grouping; no connection is created.",
 						)}
 					</small>
@@ -1038,7 +1492,7 @@ function CreateIncident({
 					{t("Приоритет", "Severity")}
 					<small className="muted">
 						{t(
-							"Влияет на условные шаги плана, а не на скорость ремонта.",
+							"Используется в условиях шагов.",
 							"Affects conditional steps, not repair speed.",
 						)}
 					</small>
@@ -1051,10 +1505,10 @@ function CreateIncident({
 					</select>
 				</label>
 				<label>
-					{t("План действий", "Action plan")}
+					{t("Инструкция", "Instruction")}
 					<small className="muted">
 						{t(
-							"Используется опубликованная версия. Текущий черновик её не меняет.",
+							"Запуск закрепится за опубликованной версией.",
 							"Uses the published version. Draft edits do not change it.",
 						)}
 					</small>
@@ -1082,7 +1536,7 @@ function CreateIncident({
 				</button>
 				<span className="muted small">
 					{t(
-						"Порядок и история сохраняются на сервере. Задачи выполняет человек. Сон бесплатного сервера может задержать таймер.",
+						"Каждый шаг и его результат останутся в истории.",
 						"Sequence and history are saved on the server. People perform tasks. A sleeping free server can delay timers.",
 					)}
 				</span>
@@ -1130,12 +1584,25 @@ function RunDetail({
 	if (!run)
 		return (
 			<section>
-				<button onClick={back}>← {t("Все инциденты", "All incidents")}</button>
+				<button onClick={back}>← {t("К запускам", "Back to runs")}</button>
 				{detail.error ? (
 					<div className="error" role="alert">
-						{errorText(detail.error, locale)}
-						<button onClick={() => detail.refetch()}>
-							{t("Повторить", "Retry")}
+						{detail.error instanceof ApiError && detail.error.status === 404
+							? t(
+									"Этот запуск недоступен в текущем браузере. Откройте историю своего пространства.",
+									"This run is unavailable in this browser. Open your workspace history.",
+								)
+							: errorText(detail.error, locale)}
+						<button
+							onClick={() =>
+								detail.error instanceof ApiError && detail.error.status === 404
+									? navigate("history")
+									: detail.refetch()
+							}
+						>
+							{detail.error instanceof ApiError && detail.error.status === 404
+								? t("Моя история", "My history")
+								: t("Повторить", "Retry")}
 						</button>
 					</div>
 				) : (
@@ -1303,18 +1770,18 @@ function RunDetail({
 							</p>
 							<h2>
 								{current.type === "approval"
-									? t("Требуется подтверждение", "Confirmation is required")
-									: t("Выполните задачу", "Complete the task")}
+									? t("Подтвердите решение", "Confirm the decision")
+									: t("Текущий шаг", "Current step")}
 							</h2>
 							<p>{current.title}</p>
 							<p>
 								{current.type === "approval"
 									? t(
-											"Следующий шаг заблокирован до вашего решения. Подтвердите результат или отклоните выполнение с причиной.",
+											"Проверьте результат и подтвердите или отклоните решение.",
 											"The next step is blocked until you decide. Confirm the outcome or reject execution with a reason.",
 										)
 									: t(
-											"Сначала выполните действие вне приложения, затем запишите результат. В учебном примере достаточно вымышленной заметки.",
+											"Выполните действие вне приложения и запишите результат.",
 											"Perform the action outside the app first, then record the result. For a practice example, a fictional note is enough.",
 										)}
 							</p>
@@ -1337,8 +1804,8 @@ function RunDetail({
 								disabled={action.isPending || !reason.trim()}
 							>
 								{current.type === "approval"
-									? t("Подтвердить и продолжить", "Confirm and continue")
-									: t("Подтвердить выполнение", "Confirm completion")}
+									? t("Подтвердить решение", "Confirm decision")
+									: t("Шаг выполнен", "Step complete")}
 							</button>
 							{current.type === "approval" && (
 								<button
@@ -1358,7 +1825,7 @@ function RunDetail({
 							)}
 							<p className="small muted">
 								{t(
-									"Решение и комментарий попадут в историю инцидента.",
+									"Результат сохранится в истории.",
 									"Your decision and comment will be recorded in the incident history.",
 								)}
 							</p>
@@ -1378,7 +1845,7 @@ function RunDetail({
 							</span>
 							<h2>
 								{run.status === "completed"
-									? t("План выполнен", "Action plan completed")
+									? t("Инструкция выполнена", "Instruction complete")
 									: run.status === "waiting"
 										? t("Ожидание по таймеру", "Observation in progress")
 										: label(run.status, locale)}
@@ -1386,11 +1853,11 @@ function RunDetail({
 							<p>
 								{run.status === "completed"
 									? t(
-											"Все подходящие шаги пройдены. История и заметки сохранены ниже. Завершение плана само по себе не доказывает, что сайт исправен.",
+											"Все шаги пройдены. Результаты и история сохранены.",
 											"All matching steps have finished. History and notes are saved below. Completing a plan alone does not prove the website is working.",
 										)
 									: t(
-											"Страница обновляется автоматически. Таймер ждёт указанного времени, но не проверяет сайт. После сна сервера продолжение может задержаться; история не теряется.",
+											"Ожидаем следующий шаг. Можно закрыть страницу и вернуться позже.",
 											"This page updates automatically. The timer waits for the configured time but does not check the website. Server sleep can delay continuation; history is retained.",
 										)}
 							</p>
@@ -1406,7 +1873,10 @@ function RunDetail({
 								)}
 						</div>
 					)}
-					<div className="panel run-context">
+					<details className="panel run-context">
+						<summary>
+							{t("Детали и управление запуском", "Run details and controls")}
+						</summary>
 						<h2>{t("О выполнении плана", "Plan execution")}</h2>
 						<dl>
 							<dt>{t("Сервис", "Service")}</dt>
@@ -1455,7 +1925,7 @@ function RunDetail({
 								"Starting again creates a separate execution using the latest published version.",
 							)}
 						</p>
-					</div>
+					</details>
 				</aside>
 			</div>
 		</section>
