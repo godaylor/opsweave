@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	api,
@@ -82,6 +82,7 @@ export default function Editor({
 	const query = useQueryClient();
 	const [saved, setSaved] = useState(playbook);
 	const [notice, setNotice] = useState("");
+	const [outlineOpen, setOutlineOpen] = useState(() => innerWidth > 850);
 	const {
 		register,
 		control,
@@ -111,6 +112,7 @@ export default function Editor({
 		control,
 		name: "steps",
 	});
+	const draftSteps = useWatch({ control, name: "steps" }) || [];
 	const save = useMutation({
 		mutationFn: async (draft: Draft) =>
 			saved
@@ -192,7 +194,21 @@ export default function Editor({
 					disabled={save.isPending || publish.isPending}
 				>
 					<div className="editor-toolbar">
-						<output className="save-state">
+						<output
+							className="save-state"
+							data-save={
+								save.error
+									? "error"
+									: save.isPending
+										? "saving"
+										: isDirty
+											? "dirty"
+											: saved
+												? "saved"
+												: "new"
+							}
+							aria-live="polite"
+						>
 							{save.isPending
 								? t("Сохраняем…", "Saving…")
 								: isDirty
@@ -272,7 +288,7 @@ export default function Editor({
 									/>
 									<small className="muted">
 										{t(
-											"По этому названию вы выберете план при создании инцидента.",
+											"Название для списка и запуска.",
 											"Use this name to choose the plan when creating an incident.",
 										)}
 									</small>
@@ -290,7 +306,7 @@ export default function Editor({
 									/>
 									<small className="muted">
 										{t(
-											"Описание помогает выбрать план; оно не меняет порядок шагов.",
+											"Ситуация и ожидаемый результат.",
 											"The description helps you choose a plan; it does not change the step order.",
 										)}
 									</small>
@@ -310,7 +326,11 @@ export default function Editor({
 							</details>
 							<ol className="step-list">
 								{fields.map((field, index) => (
-									<li key={field.id} className="step-card">
+									<li
+										key={field.id}
+										className="step-card"
+										id={`editor-step-${field.id}`}
+									>
 										<div className="step-number">{index + 1}</div>
 										<div className="step-fields">
 											<div className="step-top">
@@ -448,6 +468,63 @@ export default function Editor({
 							</button>
 						</div>
 						<aside className="guide panel">
+							<details
+								className="outline-overview"
+								open={outlineOpen}
+								onToggle={(event) => setOutlineOpen(event.currentTarget.open)}
+							>
+								<summary>
+									{t("Маршрут", "Outline")}{" "}
+									<span>
+										{fields.length} {t("шагов", "steps")}
+									</span>
+								</summary>
+								<ol
+									className="editor-outline"
+									aria-label={t("Порядок шагов", "Step order")}
+								>
+									{fields.map((field, index) => (
+										<li key={field.id}>
+											<button
+												type="button"
+												onClick={() => {
+													const row = document.getElementById(
+														`editor-step-${field.id}`,
+													);
+													row?.scrollIntoView({
+														behavior:
+															matchMedia("(prefers-reduced-motion: reduce)")
+																.matches ||
+															document.documentElement.dataset.motion ===
+																"paused"
+																? "instant"
+																: "smooth",
+														block: "center",
+													});
+													row
+														?.querySelector<HTMLInputElement>(
+															'input[name$=".title"]',
+														)
+														?.focus({ preventScroll: true });
+												}}
+											>
+												<span className="outline-index">
+													{String(index + 1).padStart(2, "0")}
+												</span>
+												<span>
+													<b>
+														{draftSteps[index]?.title ||
+															label(draftSteps[index]?.type || "task", locale)}
+													</b>
+													<small>
+														{label(draftSteps[index]?.type || "task", locale)}
+													</small>
+												</span>
+											</button>
+										</li>
+									))}
+								</ol>
+							</details>
 							<details>
 								<summary>
 									{t("Как работает выполнение", "How execution works")}
