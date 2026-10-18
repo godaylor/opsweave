@@ -450,3 +450,57 @@ test('published instruction launches while the background list refresh is delaye
   } finally { releaseRefresh(); }
   await expect(page.getByRole('heading', { name: 'Текущий шаг', exact: true })).toBeVisible();
 });
+
+test('motion controls, native transitions and synchronized editor outline', async ({ page }) => {
+  await page.setViewportSize({width:1440,height:1000});
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.addInitScript(() => {
+    window.__visualTransitions=0;
+    if(document.startViewTransition){
+      const original=document.startViewTransition.bind(document);
+      document.startViewTransition=update=>{window.__visualTransitions++; return original(update);};
+    }
+  });
+  await page.goto('/');
+  await expect(page.locator('.hero-infrastructure')).toBeVisible();
+  await expect(page.locator('.hero-infrastructure')).toHaveJSProperty('naturalWidth',1672);
+  const signal=page.locator('.trace-signal');
+  const firstOffset=await signal.evaluate(el=>getComputedStyle(el).strokeDashoffset);
+  await expect.poll(()=>signal.evaluate(el=>getComputedStyle(el).strokeDashoffset)).not.toBe(firstOffset);
+  await page.getByRole('button',{name:'Остановить анимацию',exact:true}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-motion','paused');
+  await expect.poll(()=>page.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running').length)).toBe(0);
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-motion','paused');
+  await page.getByRole('button',{name:'Включить анимацию',exact:true}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-motion','running');
+  await page.getByRole('button',{name:'Светлая тема',exact:true}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  expect(await page.evaluate(()=>window.__visualTransitions)).toBeGreaterThan(0);
+  await page.getByRole('button',{name:'Попробовать без регистрации',exact:true}).click();
+  await page.getByRole('button',{name:/Открыть готовую инструкцию/}).click();
+  const outline=page.getByRole('list',{name:'Порядок шагов',exact:true});
+  await expect(outline.getByRole('button')).toHaveCount(5);
+  await page.getByLabel('Действие или сообщение',{exact:true}).nth(1).fill('Проверить платёжный API');
+  await expect(outline.getByRole('button').nth(1)).toContainText('Проверить платёжный API');
+  await page.getByRole('button',{name:'Переместить шаг 2 вверх',exact:true}).click();
+  await expect(outline.getByRole('button').first()).toContainText('Проверить платёжный API');
+  await outline.getByRole('button').first().press('Enter');
+  await expect(page.getByLabel('Действие или сообщение',{exact:true}).first()).toBeFocused();
+  await page.getByRole('button',{name:'Сохранить',exact:true}).click();
+  await expect(page.getByText('Черновик сохранён',{exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Действие или сообщение',{exact:true}).first()).toHaveValue('Проверить платёжный API');
+  await page.getByRole('link',{name:'История',exact:true}).click();
+  expect(new URL(page.url()).searchParams.get('page')).toBe('history');
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'История запусков',exact:true})).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.dataset.transition||'')).toBe('');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const count=await page.evaluate(()=>window.__visualTransitions);
+  await page.getByRole('link',{name:'Инструкции',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Инструкции',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>window.__visualTransitions)).toBe(count);
+  await expect.poll(()=>page.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running').length)).toBe(0);
+  await expect(page.getByRole('button',{name:'Движение уменьшено в системе',exact:true})).toBeDisabled();
+});

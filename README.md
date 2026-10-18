@@ -1,4 +1,4 @@
-# OpsWeave
+# Дежурно · OpsWeave
 
 [![OpsWeave checks](https://github.com/godaylor/opsweave/actions/workflows/ci.yml/badge.svg)](https://github.com/godaylor/opsweave/actions/workflows/ci.yml)
 
@@ -6,13 +6,13 @@
 
 Это рабочее приложение с сервером и базой данных. Гостевой вход создаёт отдельное личное пространство, без общих демонстрационных данных. Аккаунт сохраняет доступ между устройствами. RU включён по умолчанию; EN переключается в интерфейсе.
 
-**Live app: [opsweave.onrender.com](https://opsweave.onrender.com)** — Render Free without a disk + Neon Free PostgreSQL (Frankfurt). Guided practice and desktop/mobile workflows verified publicly on 2026-09-28. The first request after inactivity can take 50 seconds or more.
+**Открыть: [opsweave.onrender.com](https://opsweave.onrender.com)** — Render Free + Neon Free PostgreSQL. Полный гостевой сценарий проверен в установленном Chrome 18 октября 2026. Первый запрос после простоя может занять 50 секунд или больше.
 
-![Incident response with a real action](screenshots/03-incident-action.png)
+![Дежурно: текущий шаг и сохранённые инструкции](screenshots/dezhurno-workspace.png)
 
 ## Как попробовать
 
-Нажмите «Как пользоваться» или «Открыть учебный пример». В отдельном личном пространстве создайте учебную копию плана, начните выполнение, запишите результат задачи и обязательное подтверждение. После таймера откройте историю и «Выгрузить JSON». Подсказки можно пропустить, закрыть Escape и запустить повторно. Они не выполняют действия за пользователя.
+Нажмите «Попробовать без регистрации». Создайте инструкцию или откройте готовую, сохраните и опубликуйте её. Запустите выполнение, запишите результат задачи и подтвердите решение. После таймера откройте историю и «Выгрузить JSON». Справка и пошаговый учебный пример доступны из навигации.
 
 Учебные записи сохраняются на сервере и не сбрасываются при refresh. Доступ гостя зависит от cookie на 7 дней; регистрация сохраняет его записи за личным аккаунтом. Вход для работы, регистрация и гостевой режим используют одну существующую систему авторизации. Командных ролей, приглашений и восстановления пароля по email нет.
 
@@ -44,7 +44,7 @@
 flowchart LR
   UI[React + TypeScript] --> API[Node HTTP API]
   Monitoring[Monitoring webhook] --> API
-  API --> DB[(PostgreSQL stores accounts, hashed sessions, versioned playbooks, runs, idempotency records and history in a private `opsweave` schema.
+  API --> DB[(PostgreSQL)]
   Executor[In-process execution loop] --> DB
   UI -->|refetch every 2s| API
 ```

@@ -1,4 +1,13 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import {
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+} from "react";
+import { flushSync } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
@@ -47,30 +56,15 @@ const navPaths: Record<string, string> = {
 	account: "M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-12 13v-2a8 8 0 0 1 16 0v2",
 };
 const routeArt = (
-	<div className="route-art" aria-hidden="true">
-		<div className="route-orbit orbit-one" />
-		<div className="route-orbit orbit-two" />
-		<svg aria-hidden="true" viewBox="0 0 640 250" fill="none">
-			<path
-				className="route-grid"
-				d="M0 50h640M0 100h640M0 150h640M0 200h640M80 0v250M160 0v250M240 0v250M320 0v250M400 0v250M480 0v250M560 0v250"
-			/>
-			<path
-				className="route-wire"
-				d="M-30 190h130c44 0 38-100 92-100h74c58 0 34 90 92 90h70c46 0 27-140 80-140h162"
-			/>
-			<path
-				className="route-energy"
-				d="M-30 190h130c44 0 38-100 92-100h74c58 0 34 90 92 90h70c46 0 27-140 80-140h162"
-			/>
-			<circle className="route-node node-one" cx="100" cy="190" r="8" />
-			<circle className="route-node node-two" cx="240" cy="90" r="8" />
-			<circle className="route-node node-three" cx="400" cy="180" r="8" />
-			<circle className="route-node node-four" cx="540" cy="40" r="8" />
-		</svg>
-		<span className="route-caption">
-			<i /> 01 — 02 — 03
-		</span>
+	<div className="focus-landscape" aria-hidden="true">
+		<img
+			src="/visuals/infrastructure-v3-small.png"
+			alt=""
+			width="836"
+			height="471"
+			loading="lazy"
+		/>
+		<div className="focus-scan" />
 	</div>
 );
 
@@ -103,19 +97,95 @@ export default function Product() {
 			return "dark";
 		}
 	});
+	const [motionPaused, setMotionPaused] = useState(() => {
+		try {
+			return localStorage.getItem("opsweave.motion.v1") === "paused";
+		} catch {
+			return false;
+		}
+	});
+	const [systemMotionReduced, setSystemMotionReduced] = useState(
+		() => matchMedia("(prefers-reduced-motion: reduce)").matches,
+	);
+	useEffect(() => {
+		const preference = matchMedia("(prefers-reduced-motion: reduce)");
+		const update = () => setSystemMotionReduced(preference.matches);
+		preference.addEventListener("change", update);
+		return () => preference.removeEventListener("change", update);
+	}, []);
+	const visualTransition = useRef<{ skipTransition: () => void } | null>(null);
+	const withTransition = useCallback(
+		(update: () => void, kind: "page" | "theme" = "page") => {
+			visualTransition.current?.skipTransition();
+			const visualDocument = document as unknown as {
+				startViewTransition?: (update: () => void) => {
+					skipTransition: () => void;
+					finished: Promise<void>;
+				};
+			};
+			if (
+				!visualDocument.startViewTransition ||
+				motionPaused ||
+				matchMedia("(prefers-reduced-motion: reduce)").matches
+			) {
+				flushSync(update);
+				return;
+			}
+			document.documentElement.dataset.transition = kind;
+			const next = visualDocument.startViewTransition(() => flushSync(update));
+			visualTransition.current = next;
+			void next.finished
+				.catch(() => {})
+				.then(() => {
+					if (visualTransition.current === next) {
+						visualTransition.current = null;
+						delete document.documentElement.dataset.transition;
+					}
+				});
+		},
+		[motionPaused],
+	);
+	useEffect(() => {
+		document.documentElement.dataset.motion = motionPaused
+			? "paused"
+			: "running";
+		if (motionPaused) visualTransition.current?.skipTransition();
+		try {
+			localStorage.setItem(
+				"opsweave.motion.v1",
+				motionPaused ? "paused" : "running",
+			);
+		} catch {}
+	}, [motionPaused]);
 	useEffect(() => {
 		document.documentElement.dataset.theme = theme;
 		document.documentElement.style.colorScheme = theme;
+		document
+			.querySelector('meta[name="theme-color"]')
+			?.setAttribute("content", theme === "light" ? "#f2f5fb" : "#0a101d");
 		try {
 			localStorage.setItem("opsweave.theme.v2", theme);
 		} catch {}
 	}, [theme]);
+	const themeLabel =
+		theme === "dark"
+			? locale === "ru"
+				? "Светлая тема"
+				: "Light theme"
+			: locale === "ru"
+				? "Тёмная тема"
+				: "Dark theme";
 	const themeButton = (
 		<button
 			className="theme-toggle"
-			onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-			aria-label={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
-			title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+			onClick={() =>
+				withTransition(
+					() => setTheme(theme === "dark" ? "light" : "dark"),
+					"theme",
+				)
+			}
+			aria-label={themeLabel}
+			title={themeLabel}
 		>
 			<svg
 				aria-hidden="true"
@@ -138,8 +208,61 @@ export default function Product() {
 	const [route, setRoute] = useState(
 		() => new URLSearchParams(location.search),
 	);
+	const navigationSequence = useRef(0);
+	const updateRoute = useCallback(
+		(next: URLSearchParams) => {
+			const sequence = ++navigationSequence.current;
+			withTransition(() => {
+				if (sequence === navigationSequence.current) setRoute(next);
+			});
+		},
+		[withTransition],
+	);
 	const query = useQueryClient();
 	const t = (ru: string, en: string) => (locale === "ru" ? ru : en);
+	const motionButton = (
+		<button
+			className="motion-toggle"
+			disabled={systemMotionReduced}
+			onClick={() => setMotionPaused(!motionPaused)}
+			aria-pressed={!motionPaused && !systemMotionReduced}
+			aria-label={
+				systemMotionReduced
+					? t("Движение уменьшено в системе", "System reduces motion")
+					: motionPaused
+						? t("Включить анимацию", "Enable animation")
+						: t("Остановить анимацию", "Pause animation")
+			}
+			title={
+				systemMotionReduced
+					? t("Движение уменьшено в системе", "System reduces motion")
+					: motionPaused
+						? t("Включить анимацию", "Enable animation")
+						: t("Остановить анимацию", "Pause animation")
+			}
+		>
+			<svg
+				aria-hidden="true"
+				viewBox="0 0 20 20"
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="1.5"
+			>
+				{motionPaused || systemMotionReduced ? (
+					<path d="m7 5 7 5-7 5Z" />
+				) : (
+					<path d="M7 5v10m6-10v10" />
+				)}
+			</svg>
+			<span>
+				{systemMotionReduced
+					? t("Уменьшено в системе", "System setting")
+					: motionPaused
+						? t("Движение выкл.", "Motion off")
+						: t("Движение вкл.", "Motion on")}
+			</span>
+		</button>
+	);
 	useEffect(() => {
 		document.documentElement.lang = locale;
 		try {
@@ -147,16 +270,18 @@ export default function Product() {
 		} catch {}
 	}, [locale]);
 	useEffect(() => {
-		const update = () => setRoute(new URLSearchParams(location.search));
+		const update = () => updateRoute(new URLSearchParams(location.search));
 		window.addEventListener("popstate", update);
 		return () => window.removeEventListener("popstate", update);
-	}, []);
+	}, [updateRoute]);
 	const navigate = (page: string, id?: string) => {
 		const next = new URLSearchParams({ page });
 		if (id) next.set("id", id);
+		// Commit browser history immediately; a visual snapshot must not delay Back/refresh.
 		history.pushState(null, "", `?${next}`);
-		setRoute(next);
-		document.getElementById(mainId)?.focus();
+		updateRoute(next);
+		document.getElementById(mainId)?.focus({ preventScroll: true });
+		window.scrollTo({ top: 0, behavior: "instant" });
 	};
 	const me = useQuery({
 		queryKey: ["me"],
@@ -206,6 +331,7 @@ export default function Product() {
 				locale={locale}
 				localeButton={changeLocale}
 				themeButton={themeButton}
+				motionButton={motionButton}
 				onLearn={() => navigate("incidents")}
 				onSuccess={() => {
 					query.clear();
@@ -290,6 +416,7 @@ export default function Product() {
 					))}
 				</nav>
 				<div className="sidebar-bottom">
+					{motionButton}
 					<div className="engine-status">
 						<i className={runs.error ? "disconnected" : ""} />
 						<span>
@@ -331,6 +458,7 @@ export default function Product() {
 						<details className="mobile-more">
 							<summary>{t("Ещё", "More")}</summary>
 							<nav aria-label={t("Дополнительно", "More pages")}>
+								{motionButton}
 								{nav
 									.filter((n) =>
 										["analytics", "integrations", "account"].includes(n[0]),
@@ -638,6 +766,7 @@ export default function Product() {
 }
 
 function Auth({
+	motionButton,
 	themeButton,
 	locale,
 	localeButton,
@@ -648,6 +777,7 @@ function Auth({
 	locale: Locale;
 	localeButton: React.ReactNode;
 	themeButton: React.ReactNode;
+	motionButton: React.ReactNode;
 	onSuccess: () => void;
 	error: unknown;
 	onLearn: () => void;
@@ -757,7 +887,7 @@ function Auth({
 			>
 				<section className="auth-story">
 					<p className="eyebrow">
-						{t("ИНСТРУМЕНТ ДЛЯ РЕАГИРОВАНИЯ", "INCIDENT RESPONSE WORKSPACE")}
+						{t("РЕАГИРОВАНИЕ ПО ИНСТРУКЦИИ", "INCIDENT RESPONSE WORKSPACE")}
 					</p>
 					<h1>
 						{t("Сбой — не время", "An incident is no time")}
@@ -766,7 +896,7 @@ function Auth({
 					</h1>
 					<p className="auth-lead">
 						{t(
-							"Запускайте готовые инструкции. Проходите шаги. Держите решения и результат в одном месте.",
+							"Инструкция ведёт по шагам. Вы принимаете решения — Дежурно сохраняет результат.",
 							"Run your instructions. Work through the steps. Keep decisions and outcomes together.",
 						)}
 					</p>
@@ -795,10 +925,14 @@ function Auth({
 							</button>
 						</div>
 					)}
-					<div className="auth-principles">
-						<span>01 / {t("Подготовьте", "Prepare")}</span>
-						<span>02 / {t("Выполните", "Act")}</span>
-						<span>03 / {t("Сохраните", "Keep")}</span>
+					<div className="entry-proof">
+						<span className="proof-check" aria-hidden="true">
+							✓
+						</span>
+						{t(
+							"Ваши инструкции и история сохраняются на сервере.",
+							"Your instructions and history are saved to the server.",
+						)}
 					</div>
 				</section>
 				{showLogin ? (
@@ -840,56 +974,106 @@ function Auth({
 					</section>
 				) : (
 					<section
-						className="instruction-preview"
+						className="instruction-preview infrastructure-scene"
 						aria-label={t("Маршрут выполнения", "Execution route")}
 					>
-						<img
-							className="hero-ribbon"
-							src="/visuals/route-ribbon.png"
-							alt=""
-							width="1536"
-							height="1024"
-							fetchPriority="high"
-						/>
-						<div className="scene-beacon">
+						<div
+							className="infrastructure-coordinate coordinate-top"
+							aria-hidden="true"
+						>
+							{t("СИГНАЛ → ДЕЙСТВИЕ", "SIGNAL → RESPONSE")}
+						</div>
+						<div className="infrastructure-ground" aria-hidden="true" />
+						<picture>
+							<source
+								media="(max-width: 600px)"
+								srcSet="/visuals/infrastructure-v3-small.png"
+							/>
+							<img
+								className="hero-infrastructure"
+								src="/visuals/infrastructure-v3.png"
+								alt=""
+								width="1672"
+								height="941"
+								fetchPriority="high"
+							/>
+						</picture>
+						<svg
+							className="infrastructure-trace"
+							viewBox="0 0 900 560"
+							fill="none"
+							aria-hidden="true"
+						>
+							<path
+								className="trace-base"
+								d="M30 430 265 515 512 414 795 505 874 458"
+							/>
+							<path
+								className="trace-signal"
+								d="M30 430 265 515 512 414 795 505 874 458"
+							/>
+							<circle cx="512" cy="414" r="5" />
+							<circle cx="795" cy="505" r="5" />
+						</svg>
+						<div className="infrastructure-callout">
 							<span className="scene-beacon-dot" />
+							<div>
+								<small>
+									{t("ВАЖЕН ПОРЯДОК ДЕЙСТВИЙ", "THE NEXT STEP MATTERS")}
+								</small>
+								<b>
+									{t("От сигнала — к решению.", "From signal to a decision.")}
+								</b>
+							</div>
+						</div>
+						<div className="scene-controls">
 							<span>
-								{t("От сигнала до результата", "From signal to outcome")}
+								{t("Задача · Решение · История", "Task · Decision · History")}
 							</span>
-						</div>
-						{routeArt}
-						<div className="scene-step step-a">
-							<span className="scene-check">✓</span>
-							<div>
-								<small>01 / {t("ДИАГНОСТИКА", "DIAGNOSIS")}</small>
-								<b>{t("Проверить метрики", "Check metrics")}</b>
-							</div>
-						</div>
-						<div className="scene-step step-b">
-							<span className="scene-pulse" />
-							<div>
-								<small>02 / {t("РЕШЕНИЕ", "DECISION")}</small>
-								<b>{t("Подтвердить действие", "Confirm action")}</b>
-							</div>
-							<span className="scene-arrow">↗</span>
-						</div>
-						<div className="scene-step step-c">
-							<span className="scene-last">03</span>
-							<div>
-								<small>{t("РЕЗУЛЬТАТ", "OUTCOME")}</small>
-								<b>{t("Сохранить в историю", "Save to history")}</b>
-							</div>
-						</div>
-						<div className="scene-footer">
-							<span className="scene-live-dot" />
-							{t(
-								"Каждый шаг связан со следующим",
-								"Every step connected to the next",
-							)}
+							{motionButton}
 						</div>
 					</section>
 				)}
 			</main>
+			{!showLogin && (
+				<section
+					className="entry-sequence"
+					aria-label={t("Как проходит выполнение", "How execution works")}
+				>
+					<div>
+						<span className="sequence-number">01</span>
+						<h2>{t("Подготовьте", "Prepare")}</h2>
+						<p>
+							{t(
+								"Соберите действия в инструкцию.",
+								"Turn your actions into an instruction.",
+							)}
+						</p>
+					</div>
+					<i aria-hidden="true" />
+					<div>
+						<span className="sequence-number">02</span>
+						<h2>{t("Действуйте", "Act")}</h2>
+						<p>
+							{t(
+								"Пройдите шаги и подтвердите решения.",
+								"Work through steps and confirm decisions.",
+							)}
+						</p>
+					</div>
+					<i aria-hidden="true" />
+					<div>
+						<span className="sequence-number">03</span>
+						<h2>{t("Сохраните", "Keep")}</h2>
+						<p>
+							{t(
+								"Вернитесь к результату в истории.",
+								"Return to the outcome in your history.",
+							)}
+						</p>
+					</div>
+				</section>
+			)}
 			<footer className="auth-footer">
 				<span>
 					Дежурно / {t("Инструкции и выполнение", "Instructions and execution")}

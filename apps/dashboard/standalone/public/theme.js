@@ -2,6 +2,10 @@ try {
 	const theme =
 		localStorage.getItem("opsweave.theme.v2") === "light" ? "light" : "dark";
 	document.documentElement.dataset.theme = theme;
+	document.documentElement.dataset.motion =
+		localStorage.getItem("opsweave.motion.v1") === "paused"
+			? "paused"
+			: "running";
 	document.documentElement.style.colorScheme = theme;
 	document
 		.querySelector('meta[name="theme-color"]')
