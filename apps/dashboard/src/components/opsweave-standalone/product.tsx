@@ -27,20 +27,11 @@ import { Guide } from "./guide";
 const brandSymbol = (
 	<svg aria-hidden="true" viewBox="0 0 32 32" fill="none">
 		<path
-			d="M7 23V11a4 4 0 0 1 4-4h14M7 23h12a6 6 0 0 0 6-6V7"
-			stroke="currentColor"
-			strokeWidth="3"
-			strokeLinecap="round"
-			strokeLinejoin="round"
+			fill="currentColor"
+			fillRule="evenodd"
+			clipRule="evenodd"
+			d="M10 4H24V21H28V28H23V25H8V28H3V21H6C8.8 16.4 10 11.4 10 6V4ZM14 8H20V21H11C12.9 16.8 13.9 12.3 14 8Z"
 		/>
-		<path
-			d="m12 18 5-5m-5 0h5v5"
-			stroke="currentColor"
-			strokeWidth="2.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-		<circle cx="7" cy="25" r="2" fill="currentColor" />
 	</svg>
 );
 const navPaths: Record<string, string> = {
@@ -58,10 +49,10 @@ const navPaths: Record<string, string> = {
 const routeArt = (
 	<div className="focus-landscape" aria-hidden="true">
 		<img
-			src="/visuals/infrastructure-v3-small.png"
+			src="/visuals/response-core-v4-small.png"
 			alt=""
-			width="836"
-			height="471"
+			width="768"
+			height="512"
 			loading="lazy"
 		/>
 		<div className="focus-scan" />
@@ -440,7 +431,10 @@ export default function Product() {
 			</aside>
 			<div className="workspace-main">
 				<header className="topbar">
-					<span>
+					<span className="workspace-identity">
+						<span className="mobile-brand-mark" aria-hidden="true">
+							{brandSymbol}
+						</span>
 						Дежурно <span className="separator">/</span>{" "}
 						{t(
 							nav.find((n) => n[0] === page)?.[2] || "Редактор",
@@ -987,14 +981,14 @@ function Auth({
 						<picture>
 							<source
 								media="(max-width: 600px)"
-								srcSet="/visuals/infrastructure-v3-small.png"
+								srcSet="/visuals/response-core-v4-small.png"
 							/>
 							<img
 								className="hero-infrastructure"
-								src="/visuals/infrastructure-v3.png"
+								src="/visuals/response-core-v4.png"
 								alt=""
-								width="1672"
-								height="941"
+								width="1536"
+								height="1024"
 								fetchPriority="high"
 							/>
 						</picture>
@@ -1222,10 +1216,20 @@ function Incidents({
 							: t("В работе", "In progress")}
 					</h1>
 					<p className="muted">
-						{t(
-							"Запуски, которым нужно ваше действие.",
-							"Runs that need your action.",
-						)}
+						{historyOnly
+							? t(
+									"Сохранённые шаги и принятые решения.",
+									"Saved steps and decisions.",
+								)
+							: active
+								? t(
+										"Запуски, которым нужно ваше действие.",
+										"Runs that need your action.",
+									)
+								: t(
+										"От инструкции к сохранённому результату.",
+										"From instruction to a saved result.",
+									)}
 					</p>
 				</div>
 				<button
@@ -1258,9 +1262,12 @@ function Incidents({
 			{!creating && (
 				<>
 					{!historyOnly && (
-						<div className="overview-grid">
+						<div className={`overview-grid${runs.length ? "" : " is-quiet"}`}>
 							<div className="overview-body">
-								<article className="focus-surface">
+								<article
+									className="focus-surface"
+									data-state={active ? "active" : ready ? "ready" : "new"}
+								>
 									{routeArt}
 									<div className="focus-content">
 										<div className="focus-meta">
@@ -1268,9 +1275,9 @@ function Incidents({
 											{active
 												? t("СЕЙЧАС В РАБОТЕ", "IN PROGRESS")
 												: t("БЫСТРЫЙ СТАРТ", "QUICK START")}
-											<span className="focus-code">
-												{active ? active.service : "OPS / 001"}
-											</span>
+											{active && (
+												<span className="focus-code">{active.service}</span>
+											)}
 										</div>
 										<h2>
 											{active
@@ -1365,15 +1372,17 @@ function Incidents({
 										)}
 									</div>{" "}
 								</article>
-								<div className="library-heading">
-									<h2>{t("Инструкции", "Instructions")}</h2>
-									<button
-										className="text-button"
-										onClick={() => navigate("playbooks")}
-									>
-										{t("Все инструкции", "All instructions")} ↗
-									</button>
-								</div>
+								{playbooks.length > 0 && (
+									<div className="library-heading">
+										<h2>{t("Инструкции", "Instructions")}</h2>
+										<button
+											className="text-button"
+											onClick={() => navigate("playbooks")}
+										>
+											{t("Все инструкции", "All instructions")} ↗
+										</button>
+									</div>
+								)}
 								{playbooks.length ? (
 									<div className="quick-library">
 										{playbooks.slice(0, 4).map((p, i) => (
@@ -1398,15 +1407,18 @@ function Incidents({
 										))}
 									</div>
 								) : (
-									<div className="library-empty">
-										<span>
+									<div className="quiet-history">
+										<p>
 											{t(
-												"Здесь будут ваши инструкции",
-												"Your instructions will live here",
+												"Начните с готовой инструкции или соберите свою. Результат останется в истории.",
+												"Start with a ready instruction or build your own. Results stay in your history.",
 											)}
-										</span>
-										<button onClick={() => navigate("editor")}>
-											+ {t("Создать инструкцию", "Create instruction")}
+										</p>
+										<button
+											className="text-button"
+											onClick={() => navigate("editor")}
+										>
+											+ {t("Создать с нуля", "Create from scratch")}
 										</button>
 									</div>
 								)}
@@ -1465,129 +1477,133 @@ function Incidents({
 							</aside>
 						</div>
 					)}
-					<h2 className="history-heading">
-						{historyOnly
-							? t("Все выполнения", "All executions")
-							: t("Запуски инструкций", "Instruction runs")}
-					</h2>
-					{!runs.length ? (
-						<div className="empty panel history-empty">
-							<span className="empty-symbol">↗</span>
-							<h2>{t("Ещё нет запусков", "No runs yet")}</h2>
-							<p>
-								{playbooks.some((p) => p.published)
-									? t(
-											"Запустите инструкцию — здесь сохранится каждый шаг.",
-											"Your action plan is ready. Create an incident — the server will execute it and show where your action is needed.",
-										)
-									: t(
-											"Сохраните и опубликуйте инструкцию, чтобы начать выполнение.",
-											"Create and publish your first action plan. Then start a real incident response.",
-										)}
-							</p>
-							<button
-								className="primary"
-								onClick={() =>
-									playbooks.some((p) => p.published)
-										? setCreating(true)
-										: navigate("playbooks")
-								}
-							>
-								{playbooks.some((p) => p.published)
-									? t(
-											"Запустить первую инструкцию",
-											"Start your first incident",
-										)
-									: t("Перейти к инструкциям", "Go to action plans")}{" "}
-								→
-							</button>
-						</div>
-					) : (
-						<div className="panel incident-list">
-							<div className="list-toolbar">
-								<div className="tabs">
-									{[
-										["all", "Все", "All"],
-										["active", "Открытые", "Open"],
-										["waiting", "Ожидают", "Waiting"],
-										["resolved", "Устранены", "Resolved"],
-									].map(([key, ru, en]) => (
-										<button
-											key={key}
-											aria-pressed={filter === key}
-											onClick={() => setFilter(key)}
-										>
-											{t(ru, en)}
-										</button>
-									))}
-								</div>
-								<input
-									aria-label={t("Поиск инцидентов", "Search incidents")}
-									placeholder={t(
-										"Поиск по названию или сервису",
-										"Search title or service",
-									)}
-									value={search}
-									onChange={(e) => setSearch(e.target.value)}
-								/>
-							</div>
-							{!visible.length ? (
-								<div className="empty">
-									<h2>{t("Ничего не найдено", "No results")}</h2>
+					{(historyOnly || runs.length > 0) && (
+						<>
+							<h2 className="history-heading">
+								{historyOnly
+									? t("Все выполнения", "All executions")
+									: t("Запуски инструкций", "Instruction runs")}
+							</h2>
+							{!runs.length ? (
+								<div className="empty panel history-empty">
+									<span className="empty-symbol">↗</span>
+									<h2>{t("Ещё нет запусков", "No runs yet")}</h2>
 									<p>
-										{t(
-											"Измените запрос или фильтр.",
-											"Change the search or filter.",
-										)}
+										{playbooks.some((p) => p.published)
+											? t(
+													"Запустите инструкцию — здесь сохранится каждый шаг.",
+													"Your action plan is ready. Create an incident — the server will execute it and show where your action is needed.",
+												)
+											: t(
+													"Сохраните и опубликуйте инструкцию, чтобы начать выполнение.",
+													"Create and publish your first action plan. Then start a real incident response.",
+												)}
 									</p>
 									<button
-										onClick={() => {
-											setSearch("");
-											setFilter("all");
-										}}
+										className="primary"
+										onClick={() =>
+											playbooks.some((p) => p.published)
+												? setCreating(true)
+												: navigate("playbooks")
+										}
 									>
-										{t("Сбросить фильтры", "Clear filters")}
+										{playbooks.some((p) => p.published)
+											? t(
+													"Запустить первую инструкцию",
+													"Start your first incident",
+												)
+											: t("Перейти к инструкциям", "Go to action plans")}{" "}
+										→
 									</button>
 								</div>
 							) : (
-								visible.map((run) => (
-									<a
-										className="incident-row"
-										key={run.id}
-										href={`?page=incidents&id=${run.id}`}
-										onClick={(e) => {
-											e.preventDefault();
-											navigate("incidents", run.id);
-										}}
-									>
-										<span className={`severity-dot ${run.severity}`} />
-										<div className="incident-name">
-											<span className="small muted">
-												{run.service}{" "}
-												<span className="mono">· {run.id.slice(0, 8)}</span>
-											</span>
-											<h2>{run.title}</h2>
-											<span className="small muted">
-												{run.playbookName} · v{run.version}
-											</span>
+								<div className="panel incident-list">
+									<div className="list-toolbar">
+										<div className="tabs">
+											{[
+												["all", "Все", "All"],
+												["active", "Открытые", "Open"],
+												["waiting", "Ожидают", "Waiting"],
+												["resolved", "Устранены", "Resolved"],
+											].map(([key, ru, en]) => (
+												<button
+													key={key}
+													aria-pressed={filter === key}
+													onClick={() => setFilter(key)}
+												>
+													{t(ru, en)}
+												</button>
+											))}
 										</div>
-										<div className="row-state">
-											<span className={`badge ${run.status}`}>
-												{label(run.status, locale)}
-											</span>
-											<small>
-												{run.steps[run.cursor]?.title ||
-													label(run.incidentStatus, locale)}
-											</small>
+										<input
+											aria-label={t("Поиск инцидентов", "Search incidents")}
+											placeholder={t(
+												"Поиск по названию или сервису",
+												"Search title or service",
+											)}
+											value={search}
+											onChange={(e) => setSearch(e.target.value)}
+										/>
+									</div>
+									{!visible.length ? (
+										<div className="empty">
+											<h2>{t("Ничего не найдено", "No results")}</h2>
+											<p>
+												{t(
+													"Измените запрос или фильтр.",
+													"Change the search or filter.",
+												)}
+											</p>
+											<button
+												onClick={() => {
+													setSearch("");
+													setFilter("all");
+												}}
+											>
+												{t("Сбросить фильтры", "Clear filters")}
+											</button>
 										</div>
-										<span className="row-time">
-											{date(run.created, locale)}
-										</span>
-										<span aria-hidden="true">↗</span>
-									</a>
-								))
+									) : (
+										visible.map((run) => (
+											<a
+												className="incident-row"
+												key={run.id}
+												href={`?page=incidents&id=${run.id}`}
+												onClick={(e) => {
+													e.preventDefault();
+													navigate("incidents", run.id);
+												}}
+											>
+												<span className={`severity-dot ${run.severity}`} />
+												<div className="incident-name">
+													<span className="small muted">
+														{run.service}{" "}
+														<span className="mono">· {run.id.slice(0, 8)}</span>
+													</span>
+													<h2>{run.title}</h2>
+													<span className="small muted">
+														{run.playbookName} · v{run.version}
+													</span>
+												</div>
+												<div className="row-state">
+													<span className={`badge ${run.status}`}>
+														{label(run.status, locale)}
+													</span>
+													<small>
+														{run.steps[run.cursor]?.title ||
+															label(run.incidentStatus, locale)}
+													</small>
+												</div>
+												<span className="row-time">
+													{date(run.created, locale)}
+												</span>
+												<span aria-hidden="true">↗</span>
+											</a>
+										))
+									)}
+								</div>
 							)}
-						</div>
+						</>
 					)}
 				</>
 			)}

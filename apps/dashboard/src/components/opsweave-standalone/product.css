@@ -5351,3 +5351,501 @@ select {
 	opacity: 1;
 	color: var(--muted);
 }
+
+/* V4 — a visible response workspace, with the artwork beside the work. */
+.hero-infrastructure {
+	width: 118%;
+	height: calc(100% - 54px);
+	left: -6%;
+	top: 20px;
+	object-fit: contain;
+	object-position: center;
+}
+@media (max-width: 600px) {
+	.hero-infrastructure {
+		width: 100%;
+		height: calc(100% - 42px);
+		left: 0;
+		top: 14px;
+	}
+}
+.workspace-identity {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	min-width: 0;
+}
+.mobile-brand-mark {
+	display: none;
+	width: 23px;
+	height: 25px;
+	flex: none;
+	color: var(--accent);
+}
+.mobile-brand-mark svg {
+	width: 100%;
+	height: 100%;
+}
+.focus-progress {
+	overflow-y: hidden;
+}
+@media (max-width: 980px) {
+	.mobile-brand-mark {
+		display: inline-flex;
+	}
+}
+@media (max-width: 360px) {
+	.workspace-identity {
+		gap: 4px;
+	}
+	.mobile-brand-mark {
+		width: 19px;
+		height: 21px;
+	}
+}
+.brand {
+	gap: 10px;
+	font-weight: 720;
+	letter-spacing: -0.035em;
+	line-height: 1;
+}
+.brand-mark {
+	width: 30px;
+	height: 32px;
+	transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.brand:hover .brand-mark {
+	transform: translateY(-1px) rotate(-6deg);
+}
+.overview-page > .section-heading {
+	margin-bottom: 25px;
+}
+.overview-grid {
+	grid-template-columns: minmax(0, 1fr) 190px;
+	gap: 28px;
+	align-items: start;
+}
+.overview-grid.is-quiet {
+	grid-template-columns: minmax(0, 1fr);
+}
+.overview-grid.is-quiet > .activity-rail {
+	display: none;
+}
+.focus-surface {
+	display: grid;
+	grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+	align-items: stretch;
+	min-height: 390px;
+	margin-bottom: 28px;
+	border-radius: 20px;
+	background: #102238;
+	box-shadow: 0 20px 60px #020a141f;
+}
+.focus-surface::before {
+	background:
+		radial-gradient(ellipse at 100% 70%, #3d829c38, transparent 58%),
+		linear-gradient(115deg, #102238 10%, #142c43);
+}
+.focus-surface::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 1px;
+	background: linear-gradient(90deg, transparent, #78e8dc88, transparent);
+	pointer-events: none;
+	transform-origin: left;
+	animation: workspace-line-enter 0.9s 0.2s both;
+}
+.focus-content {
+	grid-column: 1;
+	grid-row: 1;
+	min-width: 0;
+	min-height: 390px;
+	padding: 34px 0 34px 34px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+}
+.focus-content > * {
+	animation: workspace-content-enter 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.focus-content > :nth-child(2) {
+	animation-delay: 0.06s;
+}
+.focus-content > :nth-child(3) {
+	animation-delay: 0.12s;
+}
+.focus-content > :nth-child(4) {
+	animation-delay: 0.18s;
+}
+.focus-content > :nth-child(5) {
+	animation-delay: 0.24s;
+}
+.focus-surface h2 {
+	font-size: clamp(28px, 2.45vw, 39px);
+	line-height: 1.09;
+	letter-spacing: -0.04em;
+	max-width: 100%;
+	margin: 24px 0 14px;
+	text-wrap: balance;
+}
+.focus-surface p {
+	max-width: 100%;
+	font-size: 12px;
+	line-height: 1.7;
+	color: #c7d6e7;
+}
+.focus-meta {
+	width: 100%;
+	font-size: 8px;
+	letter-spacing: 1.4px;
+	color: #a4e6dd;
+}
+.focus-code {
+	letter-spacing: 0;
+	color: #b1c5d9;
+	max-width: 40%;
+	overflow-wrap: anywhere;
+}
+.focus-landscape {
+	grid-column: 2;
+	grid-row: 1;
+	position: relative;
+	align-self: stretch;
+	right: auto;
+	top: auto;
+	bottom: auto;
+	width: 100%;
+	min-width: 0;
+	min-height: 300px;
+	opacity: 1;
+	mask-image: none;
+	overflow: visible;
+	display: grid;
+	place-items: center;
+	z-index: 1;
+}
+.focus-landscape::before {
+	content: "";
+	position: absolute;
+	width: 85%;
+	height: 52%;
+	right: 0;
+	bottom: 8%;
+	background: radial-gradient(ellipse, #4adac324, transparent 70%);
+	filter: blur(18px);
+	pointer-events: none;
+}
+.focus-landscape img {
+	position: relative;
+	width: 116%;
+	max-width: none;
+	height: auto;
+	max-height: 430px;
+	object-fit: contain;
+	transform: none;
+	filter: drop-shadow(0 24px 24px #020c1e45);
+	animation: workspace-camera-enter 0.9s cubic-bezier(0.17, 0.8, 0.2, 1) both;
+}
+.focus-scan {
+	display: none;
+}
+.focus-route {
+	width: 100%;
+	max-width: 430px;
+	margin: 24px 0 27px;
+	gap: 17px;
+	align-items: center;
+}
+.focus-route > span {
+	font-size: 18px;
+	color: #dcefff;
+	font-weight: 600;
+	min-width: 0;
+}
+.focus-route small {
+	font-size: 9px;
+	color: #b4cddd;
+}
+.focus-route > i {
+	position: relative;
+	flex: 1;
+	min-width: 10px;
+	height: 1px;
+	background: #49677d;
+	font-size: 0;
+	overflow: hidden;
+}
+.focus-route > i::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: #72f0d9;
+	transform-origin: left;
+	animation: workspace-line-enter 0.8s 0.35s both;
+}
+.focus-route > i:nth-of-type(2)::after {
+	animation-delay: 0.6s;
+}
+.focus-content > .primary {
+	margin-top: auto;
+	position: relative;
+	max-width: 100%;
+	min-height: 46px;
+	box-shadow: 0 7px 30px #39c9b51c;
+}
+.focus-progress {
+	max-width: 100%;
+	width: 100%;
+	margin: 15px 0 3px;
+}
+.focus-action {
+	display: block;
+	width: 100%;
+	margin-top: auto;
+	padding-top: 19px;
+}
+.focus-action .primary {
+	margin-top: 17px;
+	min-height: 46px;
+	width: auto;
+}
+.focus-action h3 {
+	margin: 5px 0 0;
+	font-size: 14px;
+}
+.overview-grid.is-quiet .focus-surface {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 0.88fr);
+}
+.overview-grid.is-quiet .focus-content {
+	padding: 40px 0 40px 40px;
+}
+.overview-grid.is-quiet .focus-surface h2 {
+	max-width: 590px;
+	font-size: clamp(32px, 3vw, 46px);
+}
+.quiet-history {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	color: var(--muted);
+	font-size: 12px;
+	line-height: 1.65;
+	padding: 20px 0 5px;
+}
+.quiet-history p {
+	margin: 0;
+}
+.quiet-history button,
+.quiet-history a {
+	flex-shrink: 0;
+	min-height: 44px;
+}
+.quick-library > button {
+	transition:
+		padding 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+		background 0.25s;
+}
+.quick-library > button:hover {
+	padding-left: 10px;
+	padding-right: 10px;
+	background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+.sidebar nav a > span {
+	transition: transform 0.22s;
+}
+.sidebar nav a:hover > span {
+	transform: translateY(-2px);
+}
+@keyframes workspace-camera-enter {
+	from {
+		opacity: 0.25;
+		transform: translate(18px, 16px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes workspace-content-enter {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes workspace-line-enter {
+	from {
+		transform: scaleX(0);
+		opacity: 0;
+	}
+	to {
+		transform: scaleX(1);
+		opacity: 1;
+	}
+}
+@media (max-width: 1150px) {
+	.overview-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.overview-grid > .activity-rail {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 8px 26px;
+		padding: 0;
+	}
+	.overview-grid > .activity-rail > .eyebrow,
+	.overview-grid > .activity-rail > h2,
+	.overview-grid > .activity-rail > a {
+		grid-column: 1 / -1;
+	}
+	.overview-grid > .activity-rail > .text-button {
+		justify-content: flex-start;
+	}
+	.overview-grid.is-quiet > .activity-rail {
+		display: none;
+	}
+	.focus-surface,
+	.focus-content {
+		min-height: 360px;
+	}
+	.focus-landscape {
+		width: 100%;
+		right: auto;
+		opacity: 1;
+	}
+}
+@media (max-width: 680px) {
+	.focus-surface,
+	.overview-grid.is-quiet .focus-surface {
+		grid-template-columns: minmax(0, 1fr);
+		min-height: 0;
+		border-radius: 17px;
+	}
+	.focus-content,
+	.overview-grid.is-quiet .focus-content {
+		grid-column: 1;
+		grid-row: 1;
+		min-height: 0;
+		padding: 28px 26px 0;
+	}
+	.focus-surface h2,
+	.overview-grid.is-quiet .focus-surface h2 {
+		font-size: clamp(28px, 6.5vw, 37px);
+		max-width: 100%;
+		margin-top: 22px;
+	}
+	.focus-surface p {
+		font-size: 12px;
+		max-width: 100%;
+	}
+	.focus-content > .primary {
+		width: 100%;
+		margin-top: 0;
+	}
+	.focus-action {
+		margin-top: 20px;
+	}
+	.focus-action .primary {
+		width: 100%;
+	}
+	.focus-landscape {
+		grid-column: 1;
+		grid-row: 2;
+		position: relative;
+		width: 100%;
+		height: 225px;
+		min-height: 0;
+		top: auto;
+		bottom: auto;
+		right: auto;
+		margin-top: 24px;
+		mask-image: none;
+		opacity: 1;
+		overflow: hidden;
+	}
+	.focus-landscape img {
+		width: 100%;
+		height: 100%;
+		max-width: 420px;
+		max-height: 100%;
+		object-fit: contain;
+		transform: none;
+	}
+	.focus-route {
+		gap: 14px;
+		margin: 23px 0 25px;
+	}
+	.focus-route > span {
+		font-size: 18px;
+	}
+	.quiet-history {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 3px;
+	}
+	.quiet-history button {
+		padding-left: 0;
+	}
+}
+@media (max-width: 360px) {
+	.focus-content,
+	.overview-grid.is-quiet .focus-content {
+		padding-left: 21px;
+		padding-right: 21px;
+	}
+	.focus-landscape {
+		height: 195px;
+	}
+	.focus-landscape img {
+		height: 100%;
+	}
+	.focus-route {
+		gap: 10px;
+	}
+	.focus-route small {
+		font-size: 8px;
+	}
+}
+:root[data-motion="paused"] .focus-content > *,
+:root[data-motion="paused"] .focus-landscape img,
+:root[data-motion="paused"] .focus-surface::after,
+:root[data-motion="paused"] .focus-route > i::after {
+	animation: none;
+	opacity: 1;
+	transform: none;
+}
+:root[data-motion="paused"] .brand-mark,
+:root[data-motion="paused"] .quick-library > button,
+:root[data-motion="paused"] .sidebar nav a > span {
+	transition: none;
+}
+:root[data-motion="paused"] .brand:hover .brand-mark,
+:root[data-motion="paused"] .sidebar nav a:hover > span {
+	transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.focus-content > *,
+	.focus-landscape img,
+	.focus-surface::after,
+	.focus-route > i::after {
+		animation: none;
+		opacity: 1;
+		transform: none;
+	}
+	.brand-mark,
+	.quick-library > button,
+	.sidebar nav a > span {
+		transition: none;
+	}
+	.brand:hover .brand-mark,
+	.sidebar nav a:hover > span {
+		transform: none;
+	}
+}
