@@ -24,7 +24,7 @@ test('real browser: publish, run, task, approval, timer, resolve, export and RU/
   await page.screenshot({ path: 'screenshots/01-welcome-desktop.png', fullPage: true, animations: "disabled" });
   await page.getByRole('button', { name: 'Попробовать без регистрации' }).click();
   await page.getByRole('link', { name: /Главная/ }).click();
-  await page.getByRole('button', { name: 'Перейти к инструкциям' }).click();
+  await page.getByRole('link', { name: 'Инструкции', exact: true }).click();
   await page.getByRole('button', { name: 'Создать первую инструкцию' }).click();
   await page.getByRole('button', { name: 'Взять за основу: восстановление' }).click();
   await page.getByLabel('Название инструкции', {exact:true}).fill('Восстановить платёжный сервис');
@@ -34,7 +34,7 @@ test('real browser: publish, run, task, approval, timer, resolve, export and RU/
   await expect(page.getByText('Инструкция готова к запуску.')).toBeVisible();
   await page.screenshot({ path: 'screenshots/02-playbook-editor.png', fullPage: false, animations: "disabled" });
   await page.getByRole('link', { name: /Главная/ }).click();
-  await page.getByRole('button', { name: 'Запустить первую инструкцию' }).click();
+  await page.getByRole('button', { name: /^Начать выполнение/ }).click();
   await page.getByLabel('Название инцидента').fill('Недоступна оплата');
   await page.getByLabel('Сервис', { exact: true }).fill('payments-api');
   await page.getByRole('button', { name: 'Создать и запустить' }).click();
@@ -200,7 +200,7 @@ test('responsive RU/EN, API errors, lists and keyboard at all requested widths',
   await page.getByRole('button',{name:'Опубликовать',exact:true}).click();
   await expect(page.getByText('Инструкция готова к запуску.')).toBeVisible();
   await page.getByRole('link',{name:/Главная/}).click();
-  await page.getByRole('button',{name:'Запустить первую инструкцию'}).click();
+  await page.getByRole('button',{name:/^Начать выполнение/}).click();
   for(const width of widths) { await page.setViewportSize({width,height:960}); await fits(); }
   await page.getByLabel('Название инцидента',{exact:true}).fill('Учебный сбой '+ 'Название'.repeat(15));
   await page.getByLabel('Сервис',{exact:true}).fill('training-service');
@@ -463,7 +463,7 @@ test('motion controls, native transitions and synchronized editor outline', asyn
   });
   await page.goto('/');
   await expect(page.locator('.hero-infrastructure')).toBeVisible();
-  await expect(page.locator('.hero-infrastructure')).toHaveJSProperty('naturalWidth',1672);
+  await expect(page.locator('.hero-infrastructure')).toHaveJSProperty('naturalWidth',1536);
   const signal=page.locator('.trace-signal');
   const firstOffset=await signal.evaluate(el=>getComputedStyle(el).strokeDashoffset);
   await expect.poll(()=>signal.evaluate(el=>getComputedStyle(el).strokeDashoffset)).not.toBe(firstOffset);
@@ -478,6 +478,21 @@ test('motion controls, native transitions and synchronized editor outline', asyn
   await expect(page.locator('html')).toHaveAttribute('data-theme','light');
   expect(await page.evaluate(()=>window.__visualTransitions)).toBeGreaterThan(0);
   await page.getByRole('button',{name:'Попробовать без регистрации',exact:true}).click();
+  const workspaceArt=page.locator('.focus-landscape img');
+  await expect(workspaceArt).toHaveJSProperty('naturalWidth',768);
+  for(const width of [1440,390]) {
+    await page.setViewportSize({width,height:900});
+    await expect(workspaceArt).toBeVisible();
+    const composition=await page.locator('.focus-surface').evaluate(el=>{
+      const art=el.querySelector('.focus-landscape').getBoundingClientRect();
+      const action=el.querySelector('button.primary').getBoundingClientRect();
+      return {opacity:getComputedStyle(el.querySelector('.focus-landscape')).opacity,artTop:art.top,actionBottom:action.bottom,overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    expect(composition.opacity).toBe('1');
+    expect(composition.overflow).toBe(false);
+    if(width===390)expect(composition.artTop).toBeGreaterThanOrEqual(composition.actionBottom);
+  }
+  await page.setViewportSize({width:1440,height:900});
   await page.getByRole('button',{name:/Открыть готовую инструкцию/}).click();
   const outline=page.getByRole('list',{name:'Порядок шагов',exact:true});
   await expect(outline.getByRole('button')).toHaveCount(5);
